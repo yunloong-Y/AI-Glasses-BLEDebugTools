@@ -1,0 +1,94 @@
+# BlueDebug 产线自动化测试脚本 - BES2710 TWS
+# ============================================
+# 用途: TWS 耳机产线全功能测试
+# 适用: BES2700 / BES2710 / BES2800
+# ============================================
+
+name: "BES2710 产线全功能测试"
+description: "触控/麦克风/充电/配对/降噪 全流程自动化测试"
+device: "auto"
+vendor: "BES"
+
+steps:
+  # Step 1: 连接并读取设备信息
+  - name: "设备连接与信息读取"
+    actions:
+      - type: connect
+      - type: send_at
+        cmd: "AT+VERSION?"
+        expect: "BES2710"
+      - type: send_at
+        cmd: "AT+BATTERY?"
+        expect_range: [10, 100]
+      - type: log
+        msg: "设备信息读取完成"
+
+  # Step 2: 触控测试
+  - name: "触控灵敏度测试"
+    actions:
+      - type: write_reg
+        addr: 0x24
+        data: [0x05]
+      - type: delay
+        ms: 500
+      - type: read_reg
+        addr: 0x24
+        expect: [0x05]
+      - type: log
+        msg: "触控测试通过"
+
+  # Step 3: 麦克风测试
+  - name: "麦克风回路测试"
+    actions:
+      - type: send_at
+        cmd: "AT+MIC_TEST=START"
+      - type: delay
+        ms: 3000
+      - type: send_at
+        cmd: "AT+MIC_TEST=STOP"
+      - type: log
+        msg: "麦克风测试完成"
+
+  # Step 4: ANC 降噪测试
+  - name: "ANC 降噪测试"
+    actions:
+      - type: send_at
+        cmd: "AT+ANC=ON"
+      - type: delay
+        ms: 1000
+      - type: read_reg
+        addr: 0x18
+        expect: [0x01]
+      - type: send_at
+        cmd: "AT+ANC=OFF"
+      - type: log
+        msg: "ANC 测试通过"
+
+  # Step 5: 充电检测
+  - name: "充电状态检测"
+    actions:
+      - type: read_reg
+        addr: 0x28
+      - type: log
+        msg: "充电状态已读取"
+
+  # Step 6: 左右耳配对测试
+  - name: "TWS 配对测试"
+    actions:
+      - type: send_at
+        cmd: "AT+TWS_PAIR"
+      - type: delay
+        ms: 2000
+      - type: read_reg
+        addr: 0x2C
+        expect: [0x01]
+      - type: log
+        msg: "TWS 配对测试通过"
+
+  # Step 7: 生成报告
+  - name: "测试报告生成"
+    actions:
+      - type: log
+        msg: "全功能测试完成，生成报告"
+      - type: export_report
+        format: csv

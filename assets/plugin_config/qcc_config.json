@@ -1,0 +1,42 @@
+{
+  "vendor": "QCC",
+  "displayName": "高通 QCC / AR1",
+  "description": "QCC3040/QCC512X/AR1 AI眼镜方案",
+  "bleServiceUuid": "0000ff00-0000-1000-8000-00805f9b34fb",
+  "logNotifyChar": "ff01",
+  "otaWriteChar": "ff02",
+  "regReadCmd": "AT+REG_RD=",
+  "regWriteCmd": "AT+REG_WR=",
+  "otaChunkSize": 4096,
+  "otaSupportResume": true,
+  "otaSupportDualChannel": true,
+  "registers": {
+    "0x0000": "CHIP_ID",
+    "0x0004": "FW_VERSION",
+    "0x0010": "AUDIO_MODE",
+    "0x0014": "ANC_ENABLE",
+    "0x0018": "MIC_GAIN_L",
+    "0x001C": "MIC_GAIN_R",
+    "0x0020": "BT_TX_POWER",
+    "0x0024": "AR_DISPLAY_CTRL",
+    "0x0028": "AR_IMU_CTRL",
+    "0x002C": "AR_CAMERA_CTRL"
+  },
+  "atCommands": [
+    "AT+VERSION?",
+    "AT+BATTERY?",
+    "AT+AR_DISPLAY=ON",
+    "AT+AR_DISPLAY=OFF",
+    "AT+AR_IMU=START",
+    "AT+AR_IMU=STOP",
+    "AT+AR_CAMERA=SNAP",
+    "AT+AUDIO_MODE=HFP",
+    "AT+AUDIO_MODE=A2DP",
+    "AT+ANC=ON",
+    "AT+ANC=OFF",
+    "AT+OTA_BEGIN",
+    "AT+OTA_DATA=",
+    "AT+OTA_END",
+    "AT+RESET"
+  ]
+}
