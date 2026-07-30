@@ -1,4 +1,4 @@
-package com.bluedebug.blebridge
+package com.aiglasses_bledebugtools.blebridge
 
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
@@ -16,7 +16,7 @@ import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.EventChannel
 
 /**
- * BlueDebug Android BLE Bridge
+ * AI-Glasses-BLEDebugTools Android BLE Bridge
  *
  * 封装 Android BluetoothGatt API，为 Flutter 层提供统一的 BLE 操作接口。
  * 支持扫描、连接、GATT 读写、通知订阅、OTA 升级。
@@ -27,7 +27,7 @@ import io.flutter.plugin.common.EventChannel
 class BleBridge(private val context: Context) {
 
     companion object {
-        private const val TAG = "BlueDebug/BleBridge"
+        private const val TAG = "AI-Glasses-BLEDebugTools/BleBridge"
     }
 
     private val bluetoothManager: BluetoothManager? =

@@ -1,4 +1,4 @@
-/// BlueDebug Protocol Registry
+/// AI-Glasses-BLEDebugTools Protocol Registry
 ///
 /// 协议注册中心：管理所有已加载的协议定义，支持热加载、卸载、查询。
 /// 内置三种厂商协议的快速匹配逻辑。

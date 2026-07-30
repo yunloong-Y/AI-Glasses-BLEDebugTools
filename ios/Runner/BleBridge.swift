@@ -2,7 +2,7 @@ import Foundation
 import CoreBluetooth
 
 /// ============================================================
-/// BlueDebug iOS BLE Bridge
+/// AI-Glasses-BLEDebugTools iOS BLE Bridge
 /// 基于 CoreBluetooth 封装 BLE 连接、特征通知、GATT 操作
 /// 适配 iOS 14 ~ iOS 18
 /// ============================================================
@@ -68,11 +68,11 @@ class BleBridge: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         switch central.state {
         case .poweredOn:
-            print("[BlueDebug] Bluetooth powered on")
+            print("[AI-Glasses-BLEDebugTools] Bluetooth powered on")
         case .poweredOff:
-            print("[BlueDebug] Bluetooth powered off")
+            print("[AI-Glasses-BLEDebugTools] Bluetooth powered off")
         case .unauthorized:
-            print("[BlueDebug] Bluetooth unauthorized - check permissions")
+            print("[AI-Glasses-BLEDebugTools] Bluetooth unauthorized - check permissions")
         default:
             break
         }
@@ -93,7 +93,7 @@ class BleBridge: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
         connectedPeripherals[mac] = peripheral
         peripheral.delegate = self
         peripheral.discoverServices(nil)
-        print("[BlueDebug] Connected to \(mac)")
+        print("[AI-Glasses-BLEDebugTools] Connected to \(mac)")
     }
 
     func centralManager(_ central: CBCentralManager,
@@ -101,7 +101,7 @@ class BleBridge: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
                         error: Error?) {
         let mac = peripheral.identifier.uuidString
         connectedPeripherals.removeValue(forKey: mac)
-        print("[BlueDebug] Disconnected from \(mac)")
+        print("[AI-Glasses-BLEDebugTools] Disconnected from \(mac)")
     }
 
     // MARK: - CBPeripheralDelegate
@@ -109,7 +109,7 @@ class BleBridge: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     func peripheral(_ peripheral: CBPeripheral,
                     didDiscoverServices error: Error?) {
         guard error == nil else {
-            print("[BlueDebug] Discover services error: \(error!)")
+            print("[AI-Glasses-BLEDebugTools] Discover services error: \(error!)")
             return
         }
         for service in peripheral.services ?? [] {

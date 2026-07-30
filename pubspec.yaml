@@ -1,5 +1,5 @@
-name: bluedebug
-description: "BlueDebug - Universal Cross-Platform Bluetooth Debug Assistant for AI Glasses, TWS Earbuds & BLE Devices."
+name: aiglasses_bledebugtools
+description: "AI-Glasses-BLEDebugTools - Universal Cross-Platform Bluetooth Debug Assistant for AI Glasses, TWS Earbuds & BLE Devices."
 publish_to: "none"
 version: 1.0.0+1
 

@@ -1,11 +1,11 @@
-# Contributing to BlueDebug
+# Contributing to AI-Glasses-BLEDebugTools
 
-First off, thank you for considering contributing to BlueDebug! 🎉
+First off, thank you for considering contributing to AI-Glasses-BLEDebugTools! 🎉
 
 ## Getting Started
 
 1. Fork the repository
-2. Clone your fork: `git clone https://github.com/your-username/BlueDebug.git`
+2. Clone your fork: `git clone https://github.com/your-username/AI-Glasses-BLEDebugTools.git`
 3. Create a feature branch: `git checkout -b feature/amazing-feature`
 4. Make your changes
 5. Push to your fork: `git push origin feature/amazing-feature`

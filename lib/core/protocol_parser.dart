@@ -1,4 +1,4 @@
-/// BlueDebug Protocol Parser Engine
+/// AI-Glasses-BLEDebugTools Protocol Parser Engine
 ///
 /// 通用 BLE 协议解析引擎，支持：
 /// 1. 自定义协议定义 (JSON Schema)

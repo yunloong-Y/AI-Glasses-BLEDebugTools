@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🔵 BlueDebug
+# 🔵 AI-Glasses-BLEDebugTools
 
 ### Universal Cross-Platform Bluetooth Debug Assistant
 
@@ -17,7 +17,7 @@
 
 ## 📖 项目简介
 
-BlueDebug 是一款面向**硬件固件工程师、音频算法工程师、AR 眼镜驱动开发、产线测试人员**的通用蓝牙调试助手。
+AI-Glasses-BLEDebugTools 是一款面向**硬件固件工程师、音频算法工程师、AR 眼镜驱动开发、产线测试人员**的通用蓝牙调试助手。
 
 基于 Flutter 跨平台框架开发，一套代码同时编译 Android APK 和 iOS IPA，通过插件化架构适配多种芯片方案。
 
@@ -78,7 +78,7 @@ BlueDebug 是一款面向**硬件固件工程师、音频算法工程师、AR �
 ## 📁 工程结构
 
 ```
-BlueDebug/
+AI-Glasses-BLEDebugTools/
 ├── lib/                        # Flutter 主代码
 │   ├── ui/                     # 所有页面 UI
 │   │   ├── scan_page.dart      # 设备扫描页
@@ -125,8 +125,8 @@ BlueDebug/
 
 ```bash
 # 克隆仓库
-git clone https://github.com/yunlongyang/BlueDebug.git
-cd BlueDebug
+git clone https://github.com/yunlongyang/AI-Glasses-BLEDebugTools.git
+cd AI-Glasses-BLEDebugTools
 
 # 安装依赖
 flutter pub get
@@ -142,7 +142,7 @@ flutter run -d ios
 
 ## 🔌 插件开发
 
-BlueDebug 采用插件化架构，新增芯片方案无需修改主工程代码。
+AI-Glasses-BLEDebugTools 采用插件化架构，新增芯片方案无需修改主工程代码。
 
 ### 创建自定义插件
 
@@ -230,6 +230,6 @@ class MyChipPlugin extends BaseChipPlugin {
 
 <div align="center">
 
-Made with 💙 by BlueDebug Contributors
+Made with 💙 by AI-Glasses-BLEDebugTools Contributors
 
 </div>

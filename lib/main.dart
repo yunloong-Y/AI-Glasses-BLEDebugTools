@@ -15,7 +15,7 @@ void main() async {
   /// 启动时预加载三套内置协议
   await _loadBuiltinProtocols();
 
-  runApp(const BlueDebugApp());
+  runApp(const AI-Glasses-BLEDebugToolsApp());
 }
 
 /// 从 assets/protocols/ 加载内置厂商协议定义
@@ -40,13 +40,13 @@ Future<void> _loadBuiltinProtocols() async {
       '[ProtocolLoader] 已加载 ${registry.all.length} 套协议: ${registry.ids.join(", ")}');
 }
 
-class BlueDebugApp extends StatelessWidget {
-  const BlueDebugApp({super.key});
+class AI-Glasses-BLEDebugToolsApp extends StatelessWidget {
+  const AI-Glasses-BLEDebugToolsApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'BlueDebug',
+      title: 'AI-Glasses-BLEDebugTools',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),

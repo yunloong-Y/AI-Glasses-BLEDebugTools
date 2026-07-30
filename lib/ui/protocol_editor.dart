@@ -1,4 +1,4 @@
-/// BlueDebug Protocol Editor
+/// AI-Glasses-BLEDebugTools Protocol Editor
 ///
 /// 协议编辑器页面 - 支持：
 ///   1. 可视化查看已加载的协议定义
