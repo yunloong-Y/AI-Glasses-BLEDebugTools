@@ -3,6 +3,7 @@ import '../plugins/base_plugin.dart';
 import '../plugins/qcc_ar_plugin.dart';
 import '../plugins/bes_tws_plugin.dart';
 import '../plugins/wq_bluetooth_plugin.dart';
+import 'protocol_editor.dart';
 
 /// ============================================================
 /// 插件管理页面
@@ -37,8 +38,21 @@ class _PluginManagerPageState extends State<PluginManagerPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('插件管理'),
+        title: const Text('插件与协议管理'),
         actions: [
+          TextButton.icon(
+            icon: const Icon(Icons.schema, size: 18),
+            label: const Text('协议编辑器'),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const ProtocolEditorPage(),
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 4),
           IconButton(
             icon: const Icon(Icons.upload_file),
             tooltip: '导入协议配置',

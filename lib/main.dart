@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'ui/scan_page.dart';
 import 'ui/log_console.dart';
 import 'ui/gatt_view.dart';
@@ -6,9 +7,37 @@ import 'ui/ota_page.dart';
 import 'ui/register_debug.dart';
 import 'ui/plugin_manager.dart';
 import 'ui/audio_debug.dart';
+import 'core/protocol_registry.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  /// 启动时预加载三套内置协议
+  await _loadBuiltinProtocols();
+
   runApp(const BlueDebugApp());
+}
+
+/// 从 assets/protocols/ 加载内置厂商协议定义
+Future<void> _loadBuiltinProtocols() async {
+  final registry = ProtocolRegistry();
+  const protocols = [
+    'assets/protocols/bes_v2.json',
+    'assets/protocols/ar1_v1.json',
+    'assets/protocols/wq_v1.json',
+  ];
+
+  for (final path in protocols) {
+    try {
+      final jsonStr = await rootBundle.loadString(path);
+      registry.loadFromJson(jsonStr);
+    } catch (e) {
+      debugPrint('[ProtocolLoader] 加载失败 $path: $e');
+    }
+  }
+
+  debugPrint(
+      '[ProtocolLoader] 已加载 ${registry.all.length} 套协议: ${registry.ids.join(", ")}');
 }
 
 class BlueDebugApp extends StatelessWidget {

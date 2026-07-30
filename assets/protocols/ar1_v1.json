@@ -1,0 +1,271 @@
+{
+  "id": "ar1_v1",
+  "name": "高通 Snapdragon AR1 AI眼镜 BLE协议",
+  "vendor": {
+    "vendorName": "Qualcomm (高通)",
+    "chipSeries": "Snapdragon AR1 Gen 1 / QCC 系列",
+    "protocolVersion": "v1.0",
+    "website": "https://www.qualcomm.com/products/snapdragon-ar1-gen-1-platform",
+    "description": "Snapdragon AR1 Gen 1 是专为智能眼镜设计的平台，集成双 ISP、Hexagon NPU、FastConnect Wi-Fi 7 + 蓝牙 5.4。BLE 协议基于标准 GATT，使用 128-bit 厂商自定义 UUID (ff00 段)，支持 OTA 双通道、AR 显示控制、IMU 数据流、相机控制等功能。"
+  },
+  "services": [
+    {
+      "name": "AR1 Main Service (主控服务)",
+      "uuid": "0000FF00-0000-1000-8000-00805F9B34FB",
+      "description": "AR1 主控数据服务，日志通知 + OTA 写入双通道",
+      "characteristics": [
+        {
+          "name": "LOG_NOTIFY (设备→手机)",
+          "uuid": "0000FF01-0000-1000-8000-00805F9B34FB",
+          "direction": "notify",
+          "notifyPayloadFormat": "hex",
+          "description": "日志与控制响应通知，通常为 ASCII 文本或二进制帧"
+        },
+        {
+          "name": "OTA_WRITE (手机→设备)",
+          "uuid": "0000FF02-0000-1000-8000-00805F9B34FB",
+          "direction": "write",
+          "writePayloadFormat": "frame:ar1_binary",
+          "description": "OTA 固件数据写入 + 控制命令下发"
+        }
+      ]
+    },
+    {
+      "name": "AR Display Service",
+      "uuid": "0000FF10-0000-1000-8000-00805F9B34FB",
+      "description": "AR 显示控制 (双目 1280x1280 @60fps 控制)",
+      "characteristics": [
+        {
+          "name": "Display Control",
+          "uuid": "0000FF11-0000-1000-8000-00805F9B34FB",
+          "direction": "write",
+          "writePayloadFormat": "hex"
+        },
+        {
+          "name": "Display Status",
+          "uuid": "0000FF12-0000-1000-8000-00805F9B34FB",
+          "direction": "notify",
+          "notifyPayloadFormat": "hex"
+        }
+      ]
+    },
+    {
+      "name": "AR IMU Service",
+      "uuid": "0000FF20-0000-1000-8000-00805F9B34FB",
+      "description": "IMU 传感器数据流 (加速度计/陀螺仪/磁力计, 3DoF 头追)",
+      "characteristics": [
+        {
+          "name": "IMU Control",
+          "uuid": "0000FF21-0000-1000-8000-00805F9B34FB",
+          "direction": "write",
+          "description": "IMU 控制 (采样率/使能)"
+        },
+        {
+          "name": "IMU Data Stream",
+          "uuid": "0000FF22-0000-1000-8000-00805F9B34FB",
+          "direction": "notify",
+          "notifyPayloadFormat": "frame:ar1_imu",
+          "description": "IMU 原始数据流 (6轴 或 9轴)"
+        }
+      ]
+    },
+    {
+      "name": "AR Camera Service",
+      "uuid": "0000FF30-0000-1000-8000-00805F9B34FB",
+      "description": "相机控制 (12MP 照片 / 6MP 视频)",
+      "characteristics": [
+        {
+          "name": "Camera Control",
+          "uuid": "0000FF31-0000-1000-8000-00805F9B34FB",
+          "direction": "write",
+          "description": "拍照/录像/预览 控制"
+        },
+        {
+          "name": "Camera Status",
+          "uuid": "0000FF32-0000-1000-8000-00805F9B34FB",
+          "direction": "notify",
+          "description": "相机状态/缩略图通知"
+        }
+      ]
+    },
+    {
+      "name": "Battery Service",
+      "uuid": "0000180F-0000-1000-8000-00805F9B34FB",
+      "description": "标准电池服务",
+      "characteristics": [
+        {
+          "name": "Battery Level",
+          "uuid": "00002A19-0000-1000-8000-00805F9B34FB",
+          "direction": "notify"
+        }
+      ]
+    },
+    {
+      "name": "Device Info Service",
+      "uuid": "0000180A-0000-1000-8000-00805F9B34FB",
+      "description": "标准设备信息服务",
+      "characteristics": [
+        { "name": "Manufacturer Name", "uuid": "00002A29-0000-1000-8000-00805F9B34FB", "direction": "read" },
+        { "name": "Firmware Revision", "uuid": "00002A26-0000-1000-8000-00805F9B34FB", "direction": "read" },
+        { "name": "Model Number",     "uuid": "00002A24-0000-1000-8000-00805F9B34FB", "direction": "read" },
+        { "name": "Serial Number",    "uuid": "00002A25-0000-1000-8000-00805F9B34FB", "direction": "read" }
+      ]
+    }
+  ],
+  "frameFormats": [
+    {
+      "name": "ar1_binary",
+      "description": "AR1 通用二进制命令帧",
+      "magicByte": 171,
+      "fields": [
+        { "name": "magic", "encoding": "uint8", "byteLength": 1, "description": "帧头 0xAB", "enumMap": { "171": "AB帧头" } },
+        { "name": "cmd", "encoding": "uint8", "byteLength": 1, "description": "命令ID" },
+        { "name": "length", "encoding": "uint16", "endian": "big", "byteLength": 2, "description": "数据长度" },
+        { "name": "data", "encoding": "bytes", "lengthSource": "length", "description": "命令数据" }
+      ]
+    },
+    {
+      "name": "ar1_imu",
+      "description": "AR1 IMU 数据帧",
+      "fields": [
+        { "name": "timestamp", "encoding": "uint32", "endian": "little", "byteLength": 4, "description": "时间戳 (ms)" },
+        { "name": "accelX", "encoding": "uint16", "endian": "little", "byteLength": 2, "description": "加速度 X" },
+        { "name": "accelY", "encoding": "uint16", "endian": "little", "byteLength": 2, "description": "加速度 Y" },
+        { "name": "accelZ", "encoding": "uint16", "endian": "little", "byteLength": 2, "description": "加速度 Z" },
+        { "name": "gyroX", "encoding": "uint16", "endian": "little", "byteLength": 2, "description": "陀螺仪 X" },
+        { "name": "gyroY", "encoding": "uint16", "endian": "little", "byteLength": 2, "description": "陀螺仪 Y" },
+        { "name": "gyroZ", "encoding": "uint16", "endian": "little", "byteLength": 2, "description": "陀螺仪 Z" }
+      ]
+    }
+  ],
+  "commandGroups": [
+    {
+      "name": "系统控制 (0x00-0x0F)",
+      "opCodeRangeStart": 0,
+      "opCodeRangeEnd": 15,
+      "commands": [
+        { "name": "CMD_GET_VERSION",    "opCode": 0,  "direction": "bidirectional", "description": "查询系统版本" },
+        { "name": "CMD_RESET",          "opCode": 1,  "direction": "send", "description": "系统复位" },
+        { "name": "CMD_SLEEP",          "opCode": 2,  "direction": "send", "description": "进入休眠" },
+        { "name": "CMD_WAKEUP",         "opCode": 3,  "direction": "send", "description": "唤醒设备" },
+        { "name": "CMD_FACTORY_RESET",  "opCode": 15, "direction": "send", "description": "恢复出厂设置" }
+      ]
+    },
+    {
+      "name": "AR 显示控制 (0x10-0x1F)",
+      "opCodeRangeStart": 16,
+      "opCodeRangeEnd": 31,
+      "commands": [
+        { "name": "CMD_DISPLAY_ON",       "opCode": 16, "direction": "send", "description": "显示屏开启" },
+        { "name": "CMD_DISPLAY_OFF",      "opCode": 17, "direction": "send", "description": "显示屏关闭" },
+        { "name": "CMD_SET_BRIGHTNESS",   "opCode": 18, "direction": "send", "description": "设置亮度 (param: 0-100)" },
+        { "name": "CMD_DISPLAY_MODE",     "opCode": 19, "direction": "send", "description": "显示模式 (0=单目, 1=双目)" },
+        { "name": "CMD_SET_RESOLUTION",   "opCode": 20, "direction": "send", "description": "设置分辨率" }
+      ]
+    },
+    {
+      "name": "IMU 传感器 (0x20-0x2F)",
+      "opCodeRangeStart": 32,
+      "opCodeRangeEnd": 47,
+      "commands": [
+        { "name": "CMD_IMU_START",      "opCode": 32, "direction": "send", "description": "启动IMU数据流" },
+        { "name": "CMD_IMU_STOP",       "opCode": 33, "direction": "send", "description": "停止IMU数据流" },
+        { "name": "CMD_IMU_SET_RATE",   "opCode": 34, "direction": "send", "description": "设置采样率 (Hz)" },
+        { "name": "CMD_IMU_CALIBRATE",  "opCode": 35, "direction": "send", "description": "IMU校准" },
+        { "name": "CMD_HEAD_TRACKING",  "opCode": 36, "direction": "send", "description": "头追使能/禁用" }
+      ]
+    },
+    {
+      "name": "相机控制 (0x30-0x3F)",
+      "opCodeRangeStart": 48,
+      "opCodeRangeEnd": 63,
+      "commands": [
+        { "name": "CMD_CAMERA_SNAP",      "opCode": 48, "direction": "send", "description": "拍照" },
+        { "name": "CMD_CAMERA_REC_START", "opCode": 49, "direction": "send", "description": "开始录像" },
+        { "name": "CMD_CAMERA_REC_STOP",  "opCode": 50, "direction": "send", "description": "停止录像" },
+        { "name": "CMD_CAMERA_PREVIEW",   "opCode": 51, "direction": "send", "description": "预览流开关" },
+        { "name": "CMD_CAMERA_STATUS",    "opCode": 52, "direction": "receive", "description": "相机状态通知" }
+      ]
+    },
+    {
+      "name": "音频控制 (0x40-0x4F)",
+      "opCodeRangeStart": 64,
+      "opCodeRangeEnd": 79,
+      "commands": [
+        { "name": "CMD_VOICE_START",    "opCode": 64, "direction": "send", "description": "启动语音助手" },
+        { "name": "CMD_VOICE_STOP",     "opCode": 65, "direction": "send", "description": "停止语音助手" },
+        { "name": "CMD_VOLUME_UP",      "opCode": 66, "direction": "send", "description": "音量加" },
+        { "name": "CMD_VOLUME_DOWN",    "opCode": 67, "direction": "send", "description": "音量减" },
+        { "name": "CMD_AUDIO_STREAM",   "opCode": 68, "direction": "send", "description": "音频流控制" }
+      ]
+    },
+    {
+      "name": "OTA 升级 (0x80-0x8F)",
+      "opCodeRangeStart": 128,
+      "opCodeRangeEnd": 143,
+      "commands": [
+        { "name": "CMD_OTA_CHECK",      "opCode": 128, "direction": "bidirectional", "description": "检查固件版本" },
+        { "name": "CMD_OTA_BEGIN",      "opCode": 129, "direction": "send", "description": "开始OTA" },
+        { "name": "CMD_OTA_DATA",       "opCode": 130, "direction": "send", "description": "OTA数据包 (4096B/chunk)" },
+        { "name": "CMD_OTA_VERIFY",     "opCode": 131, "direction": "bidirectional", "description": "CRC校验" },
+        { "name": "CMD_OTA_COMMIT",     "opCode": 132, "direction": "send", "description": "确认升级" },
+        { "name": "CMD_OTA_STATUS",     "opCode": 133, "direction": "receive", "description": "OTA状态通知" }
+      ]
+    },
+    {
+      "name": "WiFi 管理 (0x90-0x9F)",
+      "opCodeRangeStart": 144,
+      "opCodeRangeEnd": 159,
+      "commands": [
+        { "name": "CMD_WIFI_SCAN",        "opCode": 144, "direction": "bidirectional", "description": "扫描WiFi" },
+        { "name": "CMD_WIFI_CONNECT",     "opCode": 145, "direction": "send", "description": "连接WiFi" },
+        { "name": "CMD_WIFI_STATUS",      "opCode": 146, "direction": "receive", "description": "WiFi状态" },
+        { "name": "CMD_WIFI_DISCONNECT",  "opCode": 147, "direction": "send", "description": "断开WiFi" }
+      ]
+    },
+    {
+      "name": "AI/视觉 (0xA0-0xAF)",
+      "opCodeRangeStart": 160,
+      "opCodeRangeEnd": 175,
+      "commands": [
+        { "name": "CMD_AI_VISUAL_SEARCH","opCode": 160, "direction": "send", "description": "视觉搜索" },
+        { "name": "CMD_AI_TRANSLATE",    "opCode": 161, "direction": "send", "description": "实时翻译" },
+        { "name": "CMD_AI_FACE_DETECT",  "opCode": 162, "direction": "send", "description": "人脸检测" }
+      ]
+    }
+  ],
+  "registers": [
+    { "address": 0,     "name": "CHIP_ID",           "size": 4, "access": "r",  "description": "芯片ID" },
+    { "address": 4,     "name": "FW_VERSION",         "size": 4, "access": "r",  "description": "固件版本" },
+    { "address": 8,     "name": "HW_REVISION",        "size": 2, "access": "r",  "description": "硬件版本" },
+    { "address": 12,    "name": "BATTERY_MV",         "size": 2, "access": "r",  "description": "电池电压 (mV)" },
+    { "address": 16,    "name": "BATTERY_PERCENT",    "size": 1, "access": "r",  "description": "电池百分比" },
+    { "address": 20,    "name": "TEMPERATURE",        "size": 2, "access": "r",  "description": "芯片温度 (°C)" },
+    { "address": 36,    "name": "AR_DISPLAY_CTRL",    "size": 2, "access": "rw", "description": "AR 显示控制",   "bitFields": { "0": "display_enable", "1": "single_eye", "2": "always_on" } },
+    { "address": 40,    "name": "AR_IMU_CTRL",        "size": 2, "access": "rw", "description": "IMU 控制",        "bitFields": { "0": "imu_enable", "1": "gyro_enable", "2": "accel_enable", "3": "mag_enable" } },
+    { "address": 44,    "name": "AR_CAMERA_CTRL",     "size": 2, "access": "rw", "description": "相机控制",        "bitFields": { "0": "isp_enable", "1": "hdr_enable", "2": "eis_enable" } },
+    { "address": 48,    "name": "WIFI_STATUS",        "size": 1, "access": "r",  "description": "WiFi 连接状态" },
+    { "address": 52,    "name": "NPU_LOAD",           "size": 1, "access": "r",  "description": "NPU 负载 (%)" },
+    { "address": 56,    "name": "AI_ENGINE_STATUS",   "size": 1, "access": "r",  "description": "AI引擎状态",      "bitFields": { "0": "visual_search", "1": "face_detect", "2": "translate" } }
+  ],
+  "atCommands": [
+    { "command": "AT+AR_DISPLAY=ON",        "description": "开启AR显示" },
+    { "command": "AT+AR_DISPLAY=OFF",       "description": "关闭AR显示" },
+    { "command": "AT+AR_IMU=START",         "description": "启动IMU数据流" },
+    { "command": "AT+AR_IMU=STOP",          "description": "停止IMU数据流" },
+    { "command": "AT+AR_CAMERA=SNAP",       "description": "拍照" },
+    { "command": "AT+AR_CAMERA=RECORD",     "description": "开始录像" },
+    { "command": "AT+AR_CAMERA=STOP",       "description": "停止录像" },
+    { "command": "AT+AR_WIFI=SCAN",         "description": "扫描WiFi" },
+    { "command": "AT+AR_VISUAL_SEARCH",     "description": "触发视觉搜索" },
+    { "command": "AT+AR_TRANSLATE",         "description": "启动实时翻译" },
+    { "command": "AT+AR_BRIGHTNESS=50",     "description": "设置亮度 0-100" },
+    { "command": "AT+AR_RESET",             "description": "设备复位" },
+    { "command": "AT+VERSION?",             "description": "查询版本" },
+    { "command": "AT+BATTERY?",             "description": "查询电量" },
+    { "command": "AT+WIFI=CONNECT,ssid,psk","description": "连接WiFi" },
+    { "command": "AT+OTA=CHECK",            "description": "检查OTA版本" },
+    { "command": "AT+OTA=START,url",        "description": "开始OTA (URL)" }
+  ],
+  "notes": "Snapdragon AR1 Gen 1 是一个完整 SoC 平台，预装 RTOS/Linux。BLE 协议基于标准 GATT，命令帧使用 0xAB 帧头，命令按功能分组 (0x00-0xFF)。OTA 支持双通道，chunk 大小 4096 字节。AR 显示支持双目 1280x1280 @60fps。IMU 支持 6 轴/9 轴，头追使用 3DoF。相机支持 12MP 拍照 / 6MP 视频。WiFi 7 支持 5.8Gbps 峰值速率。Hexagon NPU 提供视觉搜索、人脸检测、实时翻译等 AI 能力。"
+}

@@ -1,0 +1,304 @@
+{
+  "id": "wq_v1",
+  "name": "物奇微 WQ7036 AI眼镜 BLE协议",
+  "vendor": {
+    "vendorName": "WUQI Micro (物奇微)",
+    "chipSeries": "WQ7036 / WQ703X 系列",
+    "protocolVersion": "v1.0.0",
+    "website": "https://www.wqcore.com",
+    "description": "WQ7036 是物奇微高端蓝牙音频 SoC，内置 HiFi 5 DSP + NPU，支持蓝牙 5.3/5.4 双模、LE Audio、LC3 编解码、Hybrid ANC。已批量应用于华为 FreeBuds/智能眼镜、荣耀、OPPO、JBL 等品牌。BLE 协议采用 7033/7034 段 UUID，支持 OTA/CLI/Audio 三种独立协议层，每个协议层有独立的帧格式和校验机制。"
+  },
+  "services": [
+    {
+      "name": "WQ BLE OTA Service",
+      "uuid": "00007033-0000-1000-8000-00805F9B34FB",
+      "description": "7033 段 BLE 数据通道 (OTA + 主数据通信)，用于固件升级和应用层数据传输",
+      "characteristics": [
+        {
+          "name": "BLE_WRITE (手机→设备)",
+          "uuid": "00002001-0000-1000-8000-00805F9B34FB",
+          "direction": "write",
+          "writePayloadFormat": "frame:wq_ota",
+          "description": "OTA 命令写入 (QueryDeviceInfo/EnterUpgrade/SendFile 等)"
+        },
+        {
+          "name": "BLE_NOTIFY (设备→手机)",
+          "uuid": "00002002-0000-1000-8000-00805F9B34FB",
+          "direction": "notify",
+          "notifyPayloadFormat": "frame:wq_ota",
+          "description": "OTA 状态通知与响应"
+        }
+      ]
+    },
+    {
+      "name": "WQ Serial Port Service",
+      "uuid": "00007034-0000-1000-8000-00805F9B34FB",
+      "description": "7034 段串口透传服务 (SPP替代)",
+      "characteristics": [
+        {
+          "name": "Serial Write",
+          "uuid": "00002001-0000-1000-8000-00805F9B34FB",
+          "direction": "write",
+          "writePayloadFormat": "hex"
+        },
+        {
+          "name": "Serial Notify",
+          "uuid": "00002002-0000-1000-8000-00805F9B34FB",
+          "direction": "notify",
+          "notifyPayloadFormat": "hex"
+        }
+      ]
+    },
+    {
+      "name": "WQ CLI Service (调试)",
+      "uuid": "00007035-0000-1000-8000-00805F9B34FB",
+      "description": "7035 段 CLI 调试服务，使用专用 CLI 帧格式",
+      "characteristics": [
+        {
+          "name": "CLI Write",
+          "uuid": "00002001-0000-1000-8000-00805F9B34FB",
+          "direction": "write",
+          "writePayloadFormat": "frame:wq_cli"
+        },
+        {
+          "name": "CLI Notify",
+          "uuid": "00002002-0000-1000-8000-00805F9B34FB",
+          "direction": "notify",
+          "notifyPayloadFormat": "frame:wq_cli"
+        }
+      ]
+    },
+    {
+      "name": "Battery Service",
+      "uuid": "0000180F-0000-1000-8000-00805F9B34FB",
+      "description": "标准电池服务",
+      "characteristics": [
+        {
+          "name": "Battery Level",
+          "uuid": "00002A19-0000-1000-8000-00805F9B34FB",
+          "direction": "notify"
+        }
+      ]
+    },
+    {
+      "name": "Device Info Service",
+      "uuid": "0000180A-0000-1000-8000-00805F9B34FB",
+      "description": "标准设备信息服务",
+      "characteristics": [
+        { "name": "Manufacturer Name", "uuid": "00002A29-0000-1000-8000-00805F9B34FB", "direction": "read" },
+        { "name": "Firmware Revision", "uuid": "00002A26-0000-1000-8000-00805F9B34FB", "direction": "read" },
+        { "name": "Model Number",     "uuid": "00002A24-0000-1000-8000-00805F9B34FB", "direction": "read" }
+      ]
+    }
+  ],
+  "frameFormats": [
+    {
+      "name": "wq_ota",
+      "description": "WQ OTA 协议帧 (固件升级)",
+      "magicBytes": [112, 7, 110],
+      "checksumType": "none",
+      "fields": [
+        { "name": "magic",    "encoding": "hex", "byteLength": 3, "description": "魔术字 0x70 0x07 0x6E" },
+        { "name": "header",   "encoding": "uint8", "byteLength": 1, "description": "帧头 0xC0", "enumMap": { "192": "请求帧" } },
+        { "name": "opCode",   "encoding": "uint8", "byteLength": 1, "description": "操作码" },
+        { "name": "length",   "encoding": "uint16", "endian": "big", "byteLength": 2, "description": "Payload长度" },
+        { "name": "seq",      "encoding": "uint8", "byteLength": 1, "description": "序列号" },
+        { "name": "payload",  "encoding": "bytes", "lengthSource": "length", "description": "业务数据" },
+        { "name": "suffix",   "encoding": "uint8", "byteLength": 1, "description": "帧尾 0x33", "enumMap": { "51": "帧尾" } }
+      ]
+    },
+    {
+      "name": "wq_cli",
+      "description": "WQ CLI 协议帧 (调试/寄存器读写)",
+      "magicBytes": [208, 210, 197, 194],
+      "checksumType": "crc32",
+      "checksumOffset": -1,
+      "checksumLength": 4,
+      "fields": [
+        { "name": "magic",    "encoding": "hex", "byteLength": 4, "description": "魔术字 0xD0 0xD2 0xC5 0xC2" },
+        { "name": "version",  "encoding": "uint8", "byteLength": 1, "description": "协议版本" },
+        { "name": "length",   "encoding": "uint16", "endian": "big", "byteLength": 2, "description": "数据长度" },
+        { "name": "msgType",  "encoding": "uint8", "byteLength": 1, "description": "消息类型", "enumMap": { "1": "请求", "2": "响应", "3": "通知" } },
+        { "name": "tid",      "encoding": "uint8", "byteLength": 1, "description": "事务ID" },
+        { "name": "seqnum",   "encoding": "uint16", "endian": "big", "byteLength": 2, "description": "序列号" },
+        { "name": "crc8",     "encoding": "uint8", "byteLength": 1, "description": "头部CRC8" },
+        { "name": "payload",  "encoding": "bytes", "lengthSource": "length", "description": "CLI消息体" },
+        { "name": "crc32",    "encoding": "uint32", "endian": "big", "byteLength": 4, "description": "验证CRC32" }
+      ]
+    },
+    {
+      "name": "wq_cli_inner",
+      "description": "WQ CLI 内层消息帧",
+      "fields": [
+        { "name": "start",    "encoding": "uint16", "endian": "big", "byteLength": 2, "description": "起始 0x2323" },
+        { "name": "moduleId", "encoding": "uint16", "endian": "big", "byteLength": 2, "description": "模块ID", "enumMap": { "4": "Common", "5": "LOWPOWER", "6": "Application", "8": "AudioParam" } },
+        { "name": "crc16",    "encoding": "uint16", "endian": "big", "byteLength": 2, "description": "内层CRC16" },
+        { "name": "msgId",    "encoding": "uint16", "endian": "big", "byteLength": 2, "description": "消息ID" },
+        { "name": "reserved", "encoding": "uint16", "endian": "big", "byteLength": 2, "description": "保留字段" },
+        { "name": "length",   "encoding": "uint16", "endian": "big", "byteLength": 2, "description": "数据长度" },
+        { "name": "seq",      "encoding": "uint16", "endian": "big", "byteLength": 2, "description": "序列号" },
+        { "name": "data",     "encoding": "bytes", "lengthSource": "length", "description": "消息数据" },
+        { "name": "end",      "encoding": "uint16", "endian": "big", "byteLength": 2, "description": "结束 0x4040" }
+      ]
+    },
+    {
+      "name": "wq_audio",
+      "description": "WQ Audio 协议帧 (音频流控制)",
+      "magicBytes": [81, 87],
+      "fields": [
+        { "name": "syncWord",  "encoding": "uint16", "endian": "big", "byteLength": 2, "description": "同步字 0x51 0x57" },
+        { "name": "checksum",  "encoding": "uint8", "byteLength": 1, "description": "校验和" },
+        { "name": "reserved",  "encoding": "uint8", "byteLength": 1, "description": "保留" },
+        { "name": "flags",     "encoding": "uint8", "byteLength": 1, "description": "标志位 (proto_ver 4b + need_ack 1b + frame_type 3b)" },
+        { "name": "seqNumber", "encoding": "uint8", "byteLength": 1, "description": "序列号" },
+        { "name": "svcType",   "encoding": "uint8", "byteLength": 1, "description": "服务类型", "enumMap": { "0": "Common", "1": "PlayAudio", "2": "Record", "3": "RecordOnly", "4": "VAD" } },
+        { "name": "cmdId",     "encoding": "uint8", "byteLength": 1, "description": "命令ID" },
+        { "name": "payloadLen","encoding": "uint16", "endian": "little", "byteLength": 2, "description": "Payload长度" },
+        { "name": "body",      "encoding": "bytes", "lengthSource": "payloadLen", "description": "音频数据/命令体" }
+      ]
+    }
+  ],
+  "commandGroups": [
+    {
+      "name": "OTA 命令",
+      "description": "WQ OTA 固件升级操作码，通过 0x70 0x07 0x6E 帧传输",
+      "commands": [
+        { "name": "QUERY_DEVICE_INFO",      "opCode": 2,   "direction": "bidirectional", "description": "查询设备信息 (芯片ID/版本)" },
+        { "name": "DEVICE_RESET",           "opCode": 3,   "direction": "send", "description": "设备复位" },
+        { "name": "QUERY_FILE_HEADER",      "opCode": 225, "direction": "bidirectional", "description": "查询文件头偏移" },
+        { "name": "QUERY_DEVICE_STATUS",    "opCode": 226, "direction": "bidirectional", "description": "查询设备状态" },
+        { "name": "ENTER_UPGRADE_MODE",     "opCode": 227, "direction": "send", "description": "进入升级模式" },
+        { "name": "SEND_FILE",              "opCode": 229, "direction": "send", "description": "发送固件数据" },
+        { "name": "QUERY_FILE_STATUS",      "opCode": 230, "direction": "bidirectional", "description": "查询文件传输状态" },
+        { "name": "SWITCH_ROLE",            "opCode": 231, "direction": "send", "description": "TWS角色切换" },
+        { "name": "QUERY_DEVICE_SYNC",      "opCode": 232, "direction": "bidirectional", "description": "TWS同步状态查询" }
+      ]
+    },
+    {
+      "name": "CLI Common 模块 (moduleId=4) 寄存器操作",
+      "description": "通过 CLI 帧的 Common 模块读写寄存器",
+      "commands": [
+        { "name": "READ_REGISTER",  "opCode": 4,  "direction": "bidirectional", "description": "读寄存器 (address 4B + len 2B + type 1B)", "paramNames": ["address","len","type"], "paramTypes": ["uint32","uint16","uint8"] },
+        { "name": "WRITE_REGISTER", "opCode": 6,  "direction": "send", "description": "写寄存器 (address 4B + type 1B + value 4B)", "paramNames": ["address","type","value"], "paramTypes": ["uint32","uint8","uint32"] }
+      ]
+    },
+    {
+      "name": "CLI Application 模块 (moduleId=6) 事件通知",
+      "description": "设备系统事件与用户操作事件",
+      "commands": [
+        { "name": "SEND_EVENT",    "opCode": 0,  "direction": "receive", "description": "事件通知 (UserEvent 1000-1066, SystemEvent 8000-8086)" },
+        { "name": "TWS_STATE",     "opCode": 8,  "direction": "receive", "description": "TWS配对状态" },
+        { "name": "MASTER_LINK",   "opCode": 27, "direction": "receive", "description": "主设备连接状态" },
+        { "name": "PEER_LINK",     "opCode": 30, "direction": "receive", "description": "对端设备连接状态" }
+      ]
+    },
+    {
+      "name": "CLI AudioParam 模块 (moduleId=8) 音频参数",
+      "description": "音频参数读写 (200-249)",
+      "opCodeRangeStart": 200,
+      "opCodeRangeEnd": 249,
+      "commands": [
+        { "name": "VOICE_PARAM_GET",  "opCode": 200, "direction": "bidirectional", "description": "获取通话参数" },
+        { "name": "VOICE_PARAM_SET",  "opCode": 201, "direction": "send", "description": "设置通话参数" },
+        { "name": "MUSIC_PARAM_GET",  "opCode": 206, "direction": "bidirectional", "description": "获取音乐参数" },
+        { "name": "MUSIC_PARAM_SET",  "opCode": 207, "direction": "send", "description": "设置音乐参数" },
+        { "name": "ANC_PARAM_GET",    "opCode": 212, "direction": "bidirectional", "description": "获取ANC参数" },
+        { "name": "ANC_PARAM_SET",    "opCode": 213, "direction": "send", "description": "设置ANC参数" },
+        { "name": "EQ_PARAM_GET",     "opCode": 218, "direction": "bidirectional", "description": "获取EQ参数" },
+        { "name": "EQ_PARAM_SET",     "opCode": 219, "direction": "send", "description": "设置EQ参数" }
+      ]
+    },
+    {
+      "name": "User Events (系统事件通知)",
+      "description": "通过 SEND_EVENT 上报的用户事件 (范围 1000-1066)",
+      "opCodeRangeStart": 1000,
+      "opCodeRangeEnd": 1066,
+      "commands": [
+        { "name": "EVT_POWER_ON",       "opCode": 1000, "direction": "receive", "description": "开机" },
+        { "name": "EVT_POWER_OFF",      "opCode": 1001, "direction": "receive", "description": "关机" },
+        { "name": "EVT_FACTORY_RESET",  "opCode": 1002, "direction": "receive", "description": "恢复出厂" },
+        { "name": "EVT_PAIR",           "opCode": 1003, "direction": "receive", "description": "配对请求" },
+        { "name": "EVT_MUSIC_PLAY",     "opCode": 1010, "direction": "receive", "description": "音乐播放" },
+        { "name": "EVT_MUSIC_PAUSE",    "opCode": 1011, "direction": "receive", "description": "音乐暂停" },
+        { "name": "EVT_MUSIC_PREV",     "opCode": 1012, "direction": "receive", "description": "上一首" },
+        { "name": "EVT_MUSIC_NEXT",     "opCode": 1013, "direction": "receive", "description": "下一首" },
+        { "name": "EVT_VOLUME_UP",      "opCode": 1020, "direction": "receive", "description": "音量加" },
+        { "name": "EVT_VOLUME_DOWN",    "opCode": 1021, "direction": "receive", "description": "音量减" },
+        { "name": "EVT_ANC_ON",         "opCode": 1030, "direction": "receive", "description": "ANC开启" },
+        { "name": "EVT_ANC_OFF",        "opCode": 1031, "direction": "receive", "description": "ANC关闭" },
+        { "name": "EVT_TRANSPARENCY",   "opCode": 1032, "direction": "receive", "description": "通透模式" },
+        { "name": "EVT_GAME_MODE",      "opCode": 1040, "direction": "receive", "description": "游戏模式" },
+        { "name": "EVT_VOICE_ASSIST",   "opCode": 1050, "direction": "receive", "description": "语音助手" },
+        { "name": "EVT_WEAR_DETECTED",  "opCode": 1060, "direction": "receive", "description": "佩戴检测" },
+        { "name": "EVT_WEAR_REMOVED",   "opCode": 1061, "direction": "receive", "description": "摘下检测" }
+      ]
+    },
+    {
+      "name": "System Events (系统状态通知)",
+      "description": "通过 SEND_EVENT 上报的系统事件 (范围 8000-8086)",
+      "opCodeRangeStart": 8000,
+      "opCodeRangeEnd": 8086,
+      "commands": [
+        { "name": "SYS_BT_INITED",      "opCode": 8000, "direction": "receive", "description": "蓝牙初始化完成" },
+        { "name": "SYS_BT_CONNECTED",   "opCode": 8001, "direction": "receive", "description": "蓝牙已连接" },
+        { "name": "SYS_BT_DISCONNECTED","opCode": 8002, "direction": "receive", "description": "蓝牙已断开" },
+        { "name": "SYS_BATTERY_LOW",    "opCode": 8080, "direction": "receive", "description": "低电量告警" },
+        { "name": "SYS_BATTERY_FULL",   "opCode": 8081, "direction": "receive", "description": "充电完成" },
+        { "name": "SYS_OTA_READY",      "opCode": 8085, "direction": "receive", "description": "OTA就绪" },
+        { "name": "SYS_OTA_COMPLETE",   "opCode": 8086, "direction": "receive", "description": "OTA完成" }
+      ]
+    },
+    {
+      "name": "Audio 流控制命令",
+      "description": "通过 WQ Audio 帧传输的音频流命令 (svcType=1 PlayAudio)",
+      "commands": [
+        { "name": "AUDIO_PLAY_REQ",    "opCode": 1,  "direction": "send", "description": "播放请求" },
+        { "name": "AUDIO_STOP_REQ",    "opCode": 2,  "direction": "send", "description": "停止播放" },
+        { "name": "AUDIO_DATA",        "opCode": 16, "direction": "send", "description": "音频数据" },
+        { "name": "AUDIO_PLAY_RESP",   "opCode": 129,"direction": "receive", "description": "播放响应" }
+      ]
+    }
+  ],
+  "registers": [
+    { "address": 0,      "name": "CHIP_ID",          "size": 4, "access": "r",  "description": "芯片ID (WQ7036)" },
+    { "address": 4,      "name": "FW_VERSION",        "size": 4, "access": "r",  "description": "固件版本号" },
+    { "address": 8,      "name": "HW_REVISION",       "size": 2, "access": "r",  "description": "硬件版本" },
+    { "address": 12,     "name": "BT_ADDR",           "size": 6, "access": "r",  "description": "蓝牙MAC地址" },
+    { "address": 20,     "name": "BATTERY_MV",        "size": 2, "access": "r",  "description": "电池电压 (mV)" },
+    { "address": 24,     "name": "BATTERY_PERCENT",   "size": 1, "access": "r",  "description": "电池百分比" },
+    { "address": 32,     "name": "PRODUCTION_FLAG",   "size": 1, "access": "rw", "description": "产线标志位" },
+    { "address": 64,     "name": "ANC_MODE",          "size": 1, "access": "rw", "description": "ANC模式 (0=关, 1=降噪, 2=通透)" },
+    { "address": 68,     "name": "EQ_PROFILE",        "size": 1, "access": "rw", "description": "EQ预设档位" },
+    { "address": 72,     "name": "VOLUME_STEP",       "size": 1, "access": "rw", "description": "音量步进" },
+    { "address": 76,     "name": "TWS_ROLE",          "size": 1, "access": "r",  "description": "TWS角色" },
+    { "address": 80,     "name": "CONNECTION_STATE",  "size": 1, "access": "r",  "description": "连接状态" },
+    { "address": 84,     "name": "NPU_LOAD",          "size": 1, "access": "r",  "description": "NPU负载" },
+    { "address": 88,     "name": "DSP_LOAD",          "size": 1, "access": "r",  "description": "DSP负载" },
+    { "address": 256,    "name": "SLEEP_TIMEOUT",     "size": 2, "access": "rw", "description": "休眠超时 (s)" },
+    { "address": 512,    "name": "TX_POWER_DBM",      "size": 1, "access": "rw", "description": "发射功率 (dBm, 最大15)" },
+    { "address": 516,    "name": "RSSI",              "size": 1, "access": "r",  "description": "当前RSSI" }
+  ],
+  "atCommands": [
+    { "command": "AT+VERSION?",               "responsePrefix": "+VERSION:",        "description": "查询固件版本" },
+    { "command": "AT+BATTERY?",               "responsePrefix": "+BATTERY:",        "description": "查询电池信息" },
+    { "command": "AT+ANC=ON",                  "description": "开启 ANC 降噪" },
+    { "command": "AT+ANC=OFF",                 "description": "关闭 ANC" },
+    { "command": "AT+ANC=TRANSPARENCY",        "description": "通透模式" },
+    { "command": "AT+EQ=MODE0",                "description": "EQ: 默认" },
+    { "command": "AT+EQ=MODE1",                "description": "EQ: 流行" },
+    { "command": "AT+EQ=MODE2",                "description": "EQ: 古典" },
+    { "command": "AT+EQ=MODE3",                "description": "EQ: 摇滚" },
+    { "command": "AT+GAME=ON",                 "description": "游戏模式开" },
+    { "command": "AT+GAME=OFF",                "description": "游戏模式关" },
+    { "command": "AT+SLEEP",                   "description": "进入休眠" },
+    { "command": "AT+WAKEUP",                  "description": "唤醒设备" },
+    { "command": "AT+CALIBRATION=START",       "description": "开始校准" },
+    { "command": "AT+PRODUCTION=ENTER",        "description": "进入产线模式" },
+    { "command": "AT+PRODUCTION=EXIT",         "description": "退出产线模式" },
+    { "command": "AT+REG=READ,0x0000,4",       "description": "读寄存器 (地址,字节数)" },
+    { "command": "AT+REG=WRITE,0x0000,0x1234", "description": "写寄存器 (地址,值)" },
+    { "command": "AT+RESET",                   "description": "设备复位" },
+    { "command": "AT+TWS=PAIR",                "description": "TWS配对" }
+  ],
+  "notes": "WQ7036 被华为智能眼镜2等产品采用。协议分三层：OTA层 (0x70076E帧头, 用于固件升级)、CLI层 (0xD0D2C5C2帧头, 用于调试/寄存器读写)、Audio层 (0x5157帧头, 用于音频流控制)。OTA chunk 512字节。CLI 内层使用 0x2323...0x4040 包围，支持 Common/Application/AudioParam 等多模块。发射功率最高 15dBm，接收灵敏度 -99dBm。支持 LE Audio/LC3/Auracast。内置 NPU 用于关键字唤醒。HSBTAPP 项目中的 ML11 默认 UUID 即为 WQ 协议。"
+}

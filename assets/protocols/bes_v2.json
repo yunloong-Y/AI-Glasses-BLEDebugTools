@@ -1,0 +1,332 @@
+{
+  "id": "bes_v2",
+  "name": "恒玄 BES2700 AI眼镜 BLE协议",
+  "vendor": {
+    "vendorName": "Bestechnic (恒玄科技)",
+    "chipSeries": "BES2700 / BES2600 系列",
+    "protocolVersion": "v2.0.17",
+    "website": "https://www.bestechnic.com",
+    "description": "恒玄 BES2700 系列是用于 AI 智能眼镜/蓝牙耳机的超低功耗蓝牙音频 SoC。采用双核 STAR-MC1 + BECO NPU，支持蓝牙 5.4 双模。协议层使用自定义 0xA5 帧格式，内部封装 CMD+Type+Data 结构，CRC-16/IBM 校验。"
+  },
+  "services": [
+    {
+      "name": "BES DataPath Service (主数据通道)",
+      "uuid": "01000100-0000-2000-8000-009078563412",
+      "description": "2000段 BLE 数据通道，用于应用层数据传输。NOTIFY_RX 接收设备上报，WRITE_TX 发送指令。",
+      "characteristics": [
+        {
+          "name": "NOTIFY_RX (设备→手机)",
+          "uuid": "02000200-0000-2000-8000-009178563412",
+          "direction": "notify",
+          "notifyPayloadFormat": "frame:bes_a5"
+        },
+        {
+          "name": "WRITE_TX (手机→设备)",
+          "uuid": "03000300-0000-2000-8000-009278563412",
+          "direction": "write",
+          "writePayloadFormat": "frame:bes_a5"
+        }
+      ]
+    },
+    {
+      "name": "BES OTA Service",
+      "uuid": "66666666-6666-6666-6666-666666666666",
+      "description": "OTA 固件升级服务",
+      "characteristics": [
+        {
+          "name": "OTA Data Channel",
+          "uuid": "77777777-7777-7777-7777-777777777777",
+          "direction": "write",
+          "writePayloadFormat": "frame:bes_ota",
+          "notifyPayloadFormat": "frame:bes_ota"
+        }
+      ]
+    },
+    {
+      "name": "BES TOTA Service",
+      "uuid": "86868686-8686-8686-8686-868686868686",
+      "description": "TOTA (透明 OTA) 升级服务 V2",
+      "characteristics": [
+        {
+          "name": "TOTA Data Channel",
+          "uuid": "97979797-9797-9797-9797-979797979797",
+          "direction": "write",
+          "writePayloadFormat": "frame:bes_tota"
+        }
+      ]
+    },
+    {
+      "name": "BES BLE WiFi Service",
+      "uuid": "01000100-0000-1000-8000-009078563412",
+      "description": "1000段 WiFi 配置与文件传输服务",
+      "characteristics": [
+        {
+          "name": "WiFi RX",
+          "uuid": "02000200-0000-1000-8000-009178563412",
+          "direction": "notify"
+        },
+        {
+          "name": "WiFi TX",
+          "uuid": "03000300-0000-1000-8000-009278563412",
+          "direction": "write"
+        }
+      ]
+    },
+    {
+      "name": "BES Test Service",
+      "uuid": "04000400-0000-1000-8000-009078563412",
+      "description": "1000段 测试/调试专用服务",
+      "characteristics": [
+        {
+          "name": "Test TX",
+          "uuid": "06000600-0000-1000-8000-009278563412",
+          "direction": "write"
+        },
+        {
+          "name": "Test RX",
+          "uuid": "05000500-0000-1000-8000-009178563412",
+          "direction": "notify"
+        }
+      ]
+    },
+    {
+      "name": "SmartVoice Service",
+      "uuid": "65786365-6C70-6F69-6E74-2E636F820000",
+      "description": "语音助手服务 (excelpoint.co)",
+      "characteristics": []
+    },
+    {
+      "name": "Battery Service",
+      "uuid": "0000180F-0000-1000-8000-00805F9B34FB",
+      "description": "标准电池服务",
+      "characteristics": [
+        {
+          "name": "Battery Level",
+          "uuid": "00002A19-0000-1000-8000-00805F9B34FB",
+          "direction": "notify"
+        }
+      ]
+    },
+    {
+      "name": "Device Info Service",
+      "uuid": "0000180A-0000-1000-8000-00805F9B34FB",
+      "description": "标准设备信息服务",
+      "characteristics": [
+        { "name": "Manufacturer Name", "uuid": "00002A29-0000-1000-8000-00805F9B34FB", "direction": "read" },
+        { "name": "Firmware Revision", "uuid": "00002A26-0000-1000-8000-00805F9B34FB", "direction": "read" },
+        { "name": "Model Number", "uuid": "00002A24-0000-1000-8000-00805F9B34FB", "direction": "read" }
+      ]
+    }
+  ],
+  "frameFormats": [
+    {
+      "name": "bes_a5",
+      "description": "BES BLE 0xA5 外层帧（主数据通道）",
+      "magicByte": 165,
+      "checksumType": "crc16_ibm",
+      "checksumOffset": 3,
+      "checksumLength": 2,
+      "crcPoly": 40961,
+      "crcInit": 0,
+      "crcReflect": true,
+      "fields": [
+        { "name": "magic", "encoding": "uint8", "byteLength": 1, "description": "帧头 0xA5", "enumMap": { "165": "A5帧头" } },
+        { "name": "payloadLength", "encoding": "uint16", "endian": "little", "byteLength": 2, "description": "Payload长度 (不含A5/Len/CRC)" },
+        { "name": "payload", "encoding": "bytes", "lengthSource": "payloadLength", "description": "内层 payload (CMD+Type+Seq+DataLen+Data)" },
+        { "name": "crc16", "encoding": "uint16", "endian": "little", "byteLength": 2, "description": "CRC-16/IBM (覆盖A5+Len+Payload)" }
+      ]
+    },
+    {
+      "name": "bes_inner_payload",
+      "description": "BES BLE 内层 payload 结构",
+      "fields": [
+        { "name": "cmd", "encoding": "uint16", "endian": "little", "byteLength": 2, "description": "命令ID" },
+        { "name": "type", "encoding": "uint8", "byteLength": 1, "description": "帧类型", "enumMap": { "1": "请求(Request)", "2": "响应(Response)", "3": "通知(Notification)" } },
+        { "name": "seq", "encoding": "uint8", "byteLength": 1, "description": "序列号 (递增)" },
+        { "name": "dataLen", "encoding": "uint16", "endian": "little", "byteLength": 2, "description": "数据长度" },
+        { "name": "data", "encoding": "bytes", "lengthSource": "dataLen", "description": "业务数据" }
+      ]
+    },
+    {
+      "name": "bes_commandset",
+      "description": "BES CommandSet 帧 (设备控制)",
+      "magicBytes": [8, 99],
+      "fields": [
+        { "name": "magic", "encoding": "uint16", "endian": "big", "byteLength": 2, "description": "0x08 0x63" },
+        { "name": "length", "encoding": "uint32", "endian": "little", "byteLength": 4, "description": "数据长度" },
+        { "name": "cmdType", "encoding": "uint8", "byteLength": 1, "description": "命令类型" },
+        { "name": "data", "encoding": "bytes", "lengthSource": "length", "description": "命令数据" }
+      ]
+    },
+    {
+      "name": "bes_commandset_crc",
+      "description": "BES CommandSet CRC 帧 (带校验)",
+      "magicBytes": [16, 99],
+      "fields": [
+        { "name": "magic", "encoding": "uint16", "endian": "big", "byteLength": 2, "description": "0x10 0x63" },
+        { "name": "magicCode", "encoding": "ascii", "byteLength": 4, "description": "\"BEST\" 魔术码" },
+        { "name": "data", "encoding": "bytes", "description": "CRC数据" }
+      ]
+    },
+    {
+      "name": "bes_ota",
+      "description": "BES OTA 协议命令",
+      "fields": [
+        { "name": "cmd", "encoding": "uint8", "byteLength": 1, "description": "OTA子命令" },
+        { "name": "data", "encoding": "bytes", "description": "OTA数据" }
+      ]
+    }
+  ],
+  "commandGroups": [
+    {
+      "name": "系统信息 (0x0001-0x0008)",
+      "opCodeRangeStart": 1,
+      "opCodeRangeEnd": 8,
+      "commands": [
+        { "name": "CMD_GET_PRODUCT_INFO",   "opCode": 1,  "direction": "bidirectional", "description": "获取产品信息" },
+        { "name": "CMD_GET_MODEL",          "opCode": 2,  "direction": "bidirectional", "description": "获取型号" },
+        { "name": "CMD_GET_FW_VERSION",     "opCode": 3,  "direction": "bidirectional", "description": "获取固件版本" },
+        { "name": "CMD_GET_HW_VERSION",     "opCode": 4,  "direction": "bidirectional", "description": "获取硬件版本" },
+        { "name": "CMD_HEARTBEAT",          "opCode": 7,  "direction": "bidirectional", "description": "心跳包" },
+        { "name": "CMD_GET_SIDE",           "opCode": 8,  "direction": "bidirectional", "description": "获取侧别(L/R)" }
+      ]
+    },
+    {
+      "name": "电池与电源 (0x0100-0x0102)",
+      "opCodeRangeStart": 256,
+      "opCodeRangeEnd": 258,
+      "commands": [
+        { "name": "CMD_GET_BATTERY",    "opCode": 257, "direction": "bidirectional", "description": "读取电池电量 (raw & 0x7F = 百分比)" },
+        { "name": "CMD_BATTERY_NOTIFY", "opCode": 258, "direction": "receive", "description": "电量变化通知" }
+      ]
+    },
+    {
+      "name": "音频控制 (0x0800-0x0805)",
+      "opCodeRangeStart": 2048,
+      "opCodeRangeEnd": 2053,
+      "commands": [
+        { "name": "CMD_AI_VOICE_START",  "opCode": 2053, "direction": "send", "description": "启动AI语音" },
+        { "name": "CMD_AI_VOICE_STOP",   "opCode": 2052, "direction": "send", "description": "停止AI语音" }
+      ]
+    },
+    {
+      "name": "时间同步 (0x0900-0x0903)",
+      "opCodeRangeStart": 2304,
+      "opCodeRangeEnd": 2307,
+      "commands": [
+        { "name": "CMD_SYNC_TIME", "opCode": 2307, "direction": "send", "description": "同步系统时间到设备" }
+      ]
+    },
+    {
+      "name": "音频流控制 (0x0A00-0x0A03)",
+      "opCodeRangeStart": 2560,
+      "opCodeRangeEnd": 2563,
+      "commands": [
+        { "name": "CMD_AUDIO_UPLINK",   "opCode": 2562, "direction": "send", "description": "音频上行(录音)" },
+        { "name": "CMD_AUDIO_NOTIFY",   "opCode": 2563, "direction": "receive", "description": "音频事件通知" }
+      ]
+    },
+    {
+      "name": "设备控制 (0x0D00-0x0D01)",
+      "opCodeRangeStart": 3328,
+      "opCodeRangeEnd": 3329,
+      "commands": [
+        { "name": "CMD_DEVICE_CONTROL", "opCode": 3329, "direction": "send", "description": "通用设备控制指令" }
+      ]
+    },
+    {
+      "name": "BES CommandSet 设备控制 (0x63xx 前缀)",
+      "description": "通过 0x08 0x63 帧格式发送，cmdType 区分功能",
+      "commands": [
+        { "name": "BUTTON_SETTINGS",    "opCode": 1,   "direction": "send",    "description": "按键设置" },
+        { "name": "BATTERY",            "opCode": 4,   "direction": "receive", "description": "电量信息" },
+        { "name": "ANC",                "opCode": 18,  "direction": "send",    "description": "主动降噪开关" },
+        { "name": "EQ_SWITCH",          "opCode": 19,  "direction": "send",    "description": "EQ音效切换" },
+        { "name": "DOLBY",              "opCode": 20,  "direction": "send",    "description": "杜比音效" },
+        { "name": "TWS_STATUS",         "opCode": 25,  "direction": "receive", "description": "TWS状态" },
+        { "name": "LED_ONOFF",          "opCode": 28,  "direction": "send",    "description": "LED开关" },
+        { "name": "SPATIAL_AUDIO",      "opCode": 29,  "direction": "send",    "description": "空间音频" },
+        { "name": "SLIDE_CMD",          "opCode": 31,  "direction": "receive", "description": "滑动触控" },
+        { "name": "HEAD_TRACKING_ON",   "opCode": 33,  "direction": "send",    "description": "头部追踪开关" },
+        { "name": "CODEC_TYPE",         "opCode": 128, "direction": "send",    "description": "编解码类型" },
+        { "name": "GAME_MODE",          "opCode": 129, "direction": "send",    "description": "游戏模式" },
+        { "name": "VOLUME",             "opCode": 130, "direction": "send",    "description": "音量控制" },
+        { "name": "TOUCH_ONOFF",        "opCode": 131, "direction": "send",    "description": "触控开关" },
+        { "name": "IMU_CTRL",           "opCode": 133, "direction": "send",    "description": "IMU控制" },
+        { "name": "IMU_CALIBRATION",    "opCode": 134, "direction": "send",    "description": "IMU校准" },
+        { "name": "RSSI_CMD",           "opCode": 246, "direction": "send",    "description": "RSSI读取" },
+        { "name": "SENSOR_CMD",         "opCode": 247, "direction": "send",    "description": "传感器数据" },
+        { "name": "FILE_CODE",          "opCode": 8192,"direction": "send",    "description": "文件传输" },
+        { "name": "GET_CUSTOMER_CMD",   "opCode": 12288,"direction": "bidirectional", "description": "自定义命令" }
+      ]
+    },
+    {
+      "name": "BES OTA 命令 (0x0900-0x0925)",
+      "opCodeRangeStart": 2304,
+      "opCodeRangeEnd": 2341,
+      "commands": [
+        { "name": "OTA_CMD_RETURN",                   "opCode": 2304, "direction": "receive", "description": "OTA返回码" },
+        { "name": "OTA_CMD_GET_PROTOCOL_VERSION",     "opCode": 2305, "direction": "bidirectional", "description": "获取协议版本" },
+        { "name": "OTA_CMD_SET_USER_OK",              "opCode": 2306, "direction": "send", "description": "用户确认升级" },
+        { "name": "OTA_CMD_GET_HW_INFO",              "opCode": 2307, "direction": "bidirectional", "description": "获取硬件信息" },
+        { "name": "OTA_CMD_SET_UPGRADE_NORMAL",       "opCode": 2308, "direction": "send", "description": "普通升级模式" },
+        { "name": "OTA_CMD_SET_UPGRADE_FAST",         "opCode": 2309, "direction": "send", "description": "快速升级模式" },
+        { "name": "OTA_CMD_SEND_DATA",                "opCode": 2324, "direction": "send", "description": "发送升级数据" },
+        { "name": "OTA_CMD_CRC_CHECK_PACKAGE",        "opCode": 2325, "direction": "bidirectional", "description": "分包CRC校验" },
+        { "name": "OTA_CMD_WHOLE_CRC_CHECK",          "opCode": 2327, "direction": "bidirectional", "description": "整包CRC校验" }
+      ]
+    },
+    {
+      "name": "CrashDump 命令 (0x6500-0x6505)",
+      "opCodeRangeStart": 25856,
+      "opCodeRangeEnd": 25861,
+      "commands": [
+        { "name": "CRASH_DUMP_REQ",        "opCode": 25856, "direction": "send", "description": "请求Crash Dump" },
+        { "name": "CRASH_DUMP_PARAM_REQ",  "opCode": 25857, "direction": "bidirectional", "description": "请求Dump参数" },
+        { "name": "CRASH_DUMP_START_REQ",  "opCode": 25858, "direction": "send", "description": "开始Dump" },
+        { "name": "CRASH_DUMP_RECEIVED_ACK","opCode": 25859,"direction": "send", "description": "确认接收" },
+        { "name": "CRASH_DUMP_END",        "opCode": 25861, "direction": "send", "description": "结束Dump" }
+      ]
+    },
+    {
+      "name": "Throughput 测速 (0x8000-0x800C)",
+      "opCodeRangeStart": 32768,
+      "opCodeRangeEnd": 32780,
+      "commands": [
+        { "name": "THROUGHPUT_RESPONSE", "opCode": 32768, "direction": "receive", "description": "测速响应" },
+        { "name": "THROUGHPUT_CONFIG",   "opCode": 32777, "direction": "bidirectional", "description": "测速配置" },
+        { "name": "THROUGHPUT_DATA",     "opCode": 32778, "direction": "send", "description": "测速数据" },
+        { "name": "THROUGHPUT_ACK",      "opCode": 32779, "direction": "receive", "description": "测速ACK" },
+        { "name": "THROUGHPUT_DONE",     "opCode": 32780, "direction": "receive", "description": "测速完成" }
+      ]
+    }
+  ],
+  "registers": [
+    { "address": 0,  "name": "CHIP_ID",         "size": 4, "access": "r",  "description": "芯片ID" },
+    { "address": 4,  "name": "FW_VERSION",       "size": 4, "access": "r",  "description": "固件版本号" },
+    { "address": 8,  "name": "BT_ADDR",          "size": 6, "access": "r",  "description": "蓝牙MAC地址" },
+    { "address": 12, "name": "BATTERY_LEVEL",    "size": 1, "access": "r",  "description": "电池电量 (raw & 0x7F)" },
+    { "address": 16, "name": "TWS_ROLE",         "size": 1, "access": "rw", "description": "TWS角色 (0=主, 1=从)" },
+    { "address": 20, "name": "ANC_STATUS",       "size": 1, "access": "rw", "description": "ANC状态" },
+    { "address": 24, "name": "EQ_MODE",          "size": 1, "access": "rw", "description": "EQ音效模式" },
+    { "address": 28, "name": "VOLUME_LEVEL",     "size": 1, "access": "rw", "description": "音量等级" },
+    { "address": 32, "name": "TOUCH_ENABLE",     "size": 1, "access": "rw", "description": "触控使能" },
+    { "address": 36, "name": "SPATIAL_AUDIO_EN", "size": 1, "access": "rw", "description": "空间音频使能" },
+    { "address": 40, "name": "GAME_MODE_EN",     "size": 1, "access": "rw", "description": "游戏模式使能" }
+  ],
+  "atCommands": [
+    { "command": "AT+VERSION?",  "responsePrefix": "+VERSION:", "description": "查询固件版本" },
+    { "command": "AT+BATTERY?",  "responsePrefix": "+BATTERY:", "description": "查询电池电量" },
+    { "command": "AT+ANC=ON",    "description": "开启主动降噪" },
+    { "command": "AT+ANC=OFF",   "description": "关闭主动降噪" },
+    { "command": "AT+TWS_PAIR",  "description": "TWS配对" },
+    { "command": "AT+EQ=0",      "description": "EQ: 默认" },
+    { "command": "AT+EQ=1",      "description": "EQ: 重低音" },
+    { "command": "AT+EQ=2",      "description": "EQ: 人声" },
+    { "command": "AT+LED=ON",    "description": "LED 开" },
+    { "command": "AT+LED=OFF",   "description": "LED 关" },
+    { "command": "AT+RESET",     "description": "设备复位" },
+    { "command": "AT+OTA_BEGIN", "description": "开始OTA升级" }
+  ],
+  "notes": "BES 协议使用 0xA5 帧头 + CRC-16/IBM(多项式 0xA001, 反射, 初值 0x0000) 校验。内层 payload 为 CMD(2 LE) + Type(1) + Seq(1) + DataLen(2 LE) + Data 结构。Type: 1=请求, 2=响应, 3=通知。制造商广播数据前缀为 0x48 0x53 0x43 ('HSC')。数据通道分为 1000 段(WiFi/Test) 和 2000 段(主数据) 两组 UUID 体系。"
+}
