@@ -26,8 +26,12 @@ AI-Glasses-BLEDebugTools 是一款面向**硬件固件工程师、音频算法�
 | 芯片方案 | 型号 | 典型设备 |
 |---------|------|---------|
 | **高通 QCC** | QCC3040 / 512X / AR1 | AI AR 眼镜、TWS 耳机 |
-| **恒玄 BES** | BES2700 / 2710 / 2800 | TWS 耳机、AR 眼镜 |
-| **物奇微 WQ** | WQ7033 / WQ9000 | 耳机、穿戴设备 |
+| **恒玄 BES** | BES2700 / 2710 / 2800 / 6100 | TWS 耳机、AR 眼镜、智能手表 |
+| **物奇微 WQ** | WQ7033 / WQ9000 / WQ7036 | 耳机、AI 眼镜、穿戴设备 |
+| **紫光展锐 UNISOC** | W517 | 4G AI 拍照眼镜、AR 显示眼镜 |
+| **瑞昱 Realtek** | RTL8763E / RTL8763B / RTL8773 | 音频眼镜、TWS 耳机、助听器眼镜 |
+| **炬芯 Actions** | ATS3089C / ATW6095 | 智能穿戴眼镜、智能手表 |
+| **Nordic** | nRF54L / nRF5340 | IoT 设备、健康监测眼镜 |
 | **通用 BLE** | 任意标准 BLE | 第三方设备 |
 
 ### ✨ 核心能力
@@ -105,7 +109,15 @@ AI-Glasses-BLEDebugTools/
 ├── ios/                        # iOS 原生桥
 ├── assets/
 │   ├── plugin_config/          # 厂商 JSON 协议配置
-│   └── register_map/          # 寄存器映射 CSV
+│   ├── register_map/          # 寄存器映射 CSV
+│   └── protocols/             # 🔥 7套芯片厂商BLE协议定义
+│       ├── bes_v2.json        # 恒玄 BES2700 (0xA5帧/BCCMD)
+│       ├── ar1_v1.json        # 高通 AR1 Gen1 (显示/IMU/相机)
+│       ├── wq_v1.json         # 物奇 WQ7036 (0x70076E/CLI双层帧)
+│       ├── unisoc_w517.json   # 紫光展锐 W517 (JSON-RPC/Android)
+│       ├── realtek_rtl8763e.json # 瑞昱 RTL8763E (TLV/LE Audio)
+│       ├── actions_ats3089.json  # 炬芯 ATS3089C (0xACAC帧/AI ENC)
+│       └── nordic_nrf54.json  # Nordic nRF54 (SMP/MCUboot OTA)
 ├── scripts/                    # 产线自动化脚本
 └── docs/                       # 开发文档
 ```
@@ -187,12 +199,18 @@ class MyChipPlugin extends BaseChipPlugin {
 - [x] 五层架构骨架
 - [x] 三大芯片插件骨架
 - [x] 全页面 UI 骨架
+- [x] 协议解析引擎 + 协议导入功能
+- [x] **7套芯片厂商 BLE 协议定义** (BES/AR1/WQ/展锐/瑞昱/炬芯/Nordic)
 - [ ] flutter_blue_plus 集成
 - [ ] GATT 读写完整实现
 - [ ] OTA 升级核心逻辑
 - [ ] 恒玄 BES 插件完整实现
 - [ ] 物奇微 WQ 插件完整实现
 - [ ] 高通 AR1 插件完整实现
+- [ ] 紫光展锐 W517 插件实现
+- [ ] 瑞昱 RTL8763E 插件实现
+- [ ] 炬芯 ATS3089 插件实现
+- [ ] Nordic nRF54 SMP OTA 插件实现
 - [ ] 音频调试面板
 - [ ] 日志 PCAP 导出
 - [ ] 产线自动化脚本引擎

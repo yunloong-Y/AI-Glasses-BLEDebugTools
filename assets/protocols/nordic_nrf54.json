@@ -1,0 +1,351 @@
+{
+  "id": "nordic_nrf54",
+  "name": "Nordic nRF54L/nRF5340 BLE SoC 通用协议",
+  "vendor": {
+    "vendorName": "Nordic Semiconductor",
+    "chipSeries": "nRF54L15 / nRF54L10 / nRF54H20 / nRF5340",
+    "protocolVersion": "v1.0",
+    "website": "https://www.nordicsemi.com",
+    "description": "Nordic nRF54 系列 BLE SoC 是业界标杆低功耗蓝牙芯片。nRF54L15 采用先进工艺，支持BLE 5.4+、LE Audio、信道探测(Channel Sounding)、2Mbps PHY。nRF5340 为双核设计(应用核 Cortex-M33 @128MHz + 网络核 Cortex-M33 @64MHz)。OTA采用 MCUboot 开源引导加载器 + SMP(Simple Management Protocol) over BLE。SMP Service UUID: 8D53DC1D-1DB7-4CD3-868B-8A527460AA84。广泛用于智能眼镜、健康监测、IoT设备。nRF Connect SDK 基于 Zephyr RTOS。"
+  },
+  "services": [
+    {
+      "name": "Generic Access (标准)",
+      "uuid": "00001800-0000-1000-8000-00805f9b34fb",
+      "description": "标准GAP服务",
+      "characteristics": [
+        { "name": "Device Name", "uuid": "00002a00-0000-1000-8000-00805f9b34fb", "direction": "read_write" },
+        { "name": "Appearance", "uuid": "00002a01-0000-1000-8000-00805f9b34fb", "direction": "read" },
+        { "name": "Peripheral Preferred Connection Parameters", "uuid": "00002a04-0000-1000-8000-00805f9b34fb", "direction": "read" },
+        { "name": "Central Address Resolution", "uuid": "00002aa6-0000-1000-8000-00805f9b34fb", "direction": "read" }
+      ]
+    },
+    {
+      "name": "Generic Attribute (标准)",
+      "uuid": "00001801-0000-1000-8000-00805f9b34fb",
+      "characteristics": [
+        { "name": "Service Changed", "uuid": "00002a05-0000-1000-8000-00805f9b34fb", "direction": "indicate" },
+        { "name": "Client Supported Features", "uuid": "00002b29-0000-1000-8000-00805f9b34fb", "direction": "read_write" },
+        { "name": "Database Hash", "uuid": "00002b2a-0000-1000-8000-00805f9b34fb", "direction": "read" }
+      ]
+    },
+    {
+      "name": "Device Information (标准)",
+      "uuid": "0000180a-0000-1000-8000-00805f9b34fb",
+      "characteristics": [
+        { "name": "Manufacturer Name", "uuid": "00002a29-0000-1000-8000-00805f9b34fb", "direction": "read" },
+        { "name": "Model Number", "uuid": "00002a24-0000-1000-8000-00805f9b34fb", "direction": "read" },
+        { "name": "Serial Number", "uuid": "00002a25-0000-1000-8000-00805f9b34fb", "direction": "read" },
+        { "name": "Firmware Revision", "uuid": "00002a26-0000-1000-8000-00805f9b34fb", "direction": "read" },
+        { "name": "Hardware Revision", "uuid": "00002a27-0000-1000-8000-00805f9b34fb", "direction": "read" },
+        { "name": "Software Revision", "uuid": "00002a28-0000-1000-8000-00805f9b34fb", "direction": "read" },
+        { "name": "System ID", "uuid": "00002a23-0000-1000-8000-00805f9b34fb", "direction": "read" },
+        { "name": "IEEE Regulatory", "uuid": "00002a2a-0000-1000-8000-00805f9b34fb", "direction": "read" },
+        { "name": "PnP ID", "uuid": "00002a50-0000-1000-8000-00805f9b34fb", "direction": "read" }
+      ]
+    },
+    {
+      "name": "Battery Service (标准)",
+      "uuid": "0000180f-0000-1000-8000-00805f9b34fb",
+      "characteristics": [
+        { "name": "Battery Level", "uuid": "00002a19-0000-1000-8000-00805f9b34fb", "direction": "notify_read", "notifyPayloadFormat": "uint8:percent" }
+      ]
+    },
+    {
+      "name": "Current Time Service (标准)",
+      "uuid": "00001805-0000-1000-8000-00805f9b34fb",
+      "characteristics": [
+        { "name": "Current Time", "uuid": "00002a2b-0000-1000-8000-00805f9b34fb", "direction": "notify_read" },
+        { "name": "Local Time Info", "uuid": "00002a0f-0000-1000-8000-00805f9b34fb", "direction": "read" }
+      ]
+    },
+    {
+      "name": "SMP Service (MCUmgr OTA) ★核心",
+      "uuid": "8d53dc1d-1db7-4cd3-868b-8a527460aa84",
+      "description": "Nordic MCUmgr Simple Management Protocol 服务，用于BLE OTA固件升级。支持镜像管理(Image Management)和操作系统管理(OS Management)。",
+      "characteristics": [
+        {
+          "name": "SMP Characteristic",
+          "uuid": "da2e7828-fbce-4e01-ae9e-261174997c48",
+          "direction": "write_notify",
+          "writePayloadFormat": "frame:smp",
+          "notifyPayloadFormat": "frame:smp",
+          "description": "SMP命令/响应通道。MCUmgr使用CBOR编码的请求/响应，通过此characteristic传输。"
+        }
+      ]
+    },
+    {
+      "name": "Nordic UART Service (NUS)",
+      "uuid": "6e400001-b5a3-f393-e0a9-e50e24dcca9e",
+      "description": "Nordic自定义NUS(UART over BLE)服务，用于透明串口数据传输",
+      "characteristics": [
+        {
+          "name": "NUS RX (手机→设备)",
+          "uuid": "6e400002-b5a3-f393-e0a9-e50e24dcca9e",
+          "direction": "write",
+          "writePayloadFormat": "raw:nus_data",
+          "description": "NUS写入通道"
+        },
+        {
+          "name": "NUS TX (设备→手机)",
+          "uuid": "6e400003-b5a3-f393-e0a9-e50e24dcca9e",
+          "direction": "notify",
+          "notifyPayloadFormat": "raw:nus_data",
+          "description": "NUS通知通道"
+        }
+      ]
+    },
+    {
+      "name": "Nordic LED Button Service (LBS)",
+      "uuid": "00001523-1212-efde-1523-785feabcd123",
+      "description": "Nordic标准LED/Button演示服务，在智能眼镜中可映射为LED/触摸按键控制",
+      "characteristics": [
+        {
+          "name": "Button State",
+          "uuid": "00001524-1212-efde-1523-785feabcd123",
+          "direction": "notify_read",
+          "description": "按键/触摸状态通知"
+        },
+        {
+          "name": "LED State",
+          "uuid": "00001525-1212-efde-1523-785feabcd123",
+          "direction": "write_read",
+          "description": "LED控制"
+        },
+        {
+          "name": "LBS Config",
+          "uuid": "00001526-1212-efde-1523-785feabcd123",
+          "direction": "write",
+          "description": "LBS配置"
+        }
+      ]
+    },
+    {
+      "name": "Nordic QDID Service (认证标识)",
+      "uuid": "0000fe59-0000-1000-8000-00805f9b34fb",
+      "description": "Nordic Eddystone/UUID广播标识服务",
+      "characteristics": [
+        {
+          "name": "QDID Characteristic",
+          "uuid": "8ec90003-f315-4f60-9fb8-7253670a9b2a",
+          "direction": "read",
+          "description": "蓝牙认证QDID"
+        }
+      ]
+    }
+  ],
+  "frameFormats": [
+    {
+      "name": "smp",
+      "description": "MCUmgr Simple Management Protocol 帧。SMP使用CBOR编码，包含操作类型(Group ID)、命令ID、序列号和CBOR负载。用于Nordic标准OTA升级(Image Upload/Erase/Boot/Set/Confirm)和设备管理(Reset/Echo/Stats)。",
+      "endian": "little",
+      "fields": [
+        {
+          "name": "op",
+          "encoding": "uint8",
+          "byteLength": 1,
+          "description": "操作类型",
+          "enumMap": {
+            "0": "READ",
+            "1": "READ_RESP",
+            "2": "WRITE",
+            "3": "WRITE_RESP",
+            "4": "SEND_TX",
+            "5": "SEND_TX_RESP",
+            "6": "SEND_RX",
+            "7": "SEND_RX_RESP",
+            "8": "FREE"
+          }
+        },
+        {
+          "name": "flags",
+          "encoding": "uint8",
+          "byteLength": 1,
+          "description": "标志位 (bit0 = 需要响应)"
+        },
+        {
+          "name": "len",
+          "encoding": "uint16",
+          "byteLength": 2,
+          "endian": "little",
+          "description": "CBOR payload长度"
+        },
+        {
+          "name": "groupId",
+          "encoding": "uint16",
+          "byteLength": 2,
+          "endian": "little",
+          "description": "管理组ID",
+          "enumMap": {
+            "0": "OS_MGMT",
+            "1": "IMAGE_MGMT",
+            "2": "STATISTICS_MGMT",
+            "3": "SETTINGS_MGMT",
+            "4": "LOG_MGMT",
+            "5": "RUNTIME_TESTS_MGMT",
+            "6": "SPLIT_MGMT",
+            "7": "TEST_MGMT",
+            "8": "MISC_MGMT",
+            "63": "SHELL_MGMT",
+            "64": "FS_MGMT",
+            "65": "ZEPHYR_MGMT"
+          }
+        },
+        {
+          "name": "seqNum",
+          "encoding": "uint8",
+          "byteLength": 1,
+          "description": "序列号 (匹配请求响应)"
+        },
+        {
+          "name": "cborPayload",
+          "encoding": "bytes",
+          "byteLength": 0,
+          "lengthSource": "len",
+          "description": "CBOR编码负载 (含命令ID和参数)"
+        }
+      ]
+    },
+    {
+      "name": "nus_data",
+      "description": "Nordic UART Service 透明传输数据 (原始字节流，无帧头帧尾)",
+      "endian": "little",
+      "fields": [
+        {
+          "name": "data",
+          "encoding": "bytes",
+          "byteLength": 0,
+          "description": "原始数据 (≤MTU-3字节，通常为20-509字节)"
+        }
+      ]
+    }
+  ],
+  "commands": [
+    {
+      "groupName": "Image Management (OTA固件镜像管理) ★核心",
+      "groupId": "1",
+      "description": "MCUmgr Image Management 组 - 用于BLE OTA固件升级",
+      "commands": [
+        { "opCode": "0", "name": "IMAGE_STATE", "description": "查询当前镜像槽状态 (active/confirmed/pending)" },
+        { "opCode": "1", "name": "IMAGE_UPLOAD", "description": "上传固件镜像分块 (offset/data/sha)" },
+        { "opCode": "2", "name": "IMAGE_FILE", "description": "查询镜像文件信息" },
+        { "opCode": "3", "name": "IMAGE_ERASE", "description": "擦除待升级镜像槽" },
+        { "opCode": "5", "name": "IMAGE_BOOT", "description": "设置下次启动镜像槽 (test/confirm)" },
+        { "opCode": "6", "name": "IMAGE_CONFIRM", "description": "确认当前镜像 (防回滚)" },
+        { "opCode": "7", "name": "IMAGE_LIST", "description": "列出所有镜像槽及版本" },
+        { "opCode": "8", "name": "IMAGE_SLOT_INFO", "description": "查询镜像槽详细信息" }
+      ]
+    },
+    {
+      "groupName": "OS Management (系统管理)",
+      "groupId": "0",
+      "description": "MCUmgr OS Management 组 - 设备系统管理",
+      "commands": [
+        { "opCode": "0", "name": "OS_RESET", "description": "重启设备 (可选延迟)" },
+        { "opCode": "1", "name": "OS_MCU_INFO", "description": "查询MCU信息 (Zephyr版本/构建时间)" },
+        { "opCode": "2", "name": "OS_ECHO", "description": "回显测试" },
+        { "opCode": "5", "name": "OS_BOOTINFO", "description": "查询启动信息 (启动次数/复位原因)" },
+        { "opCode": "7", "name": "OS_DATETIME_STRING", "description": "获取/设置系统时间" },
+        { "opCode": "8", "name": "OS_RESET_STATS", "description": "重置统计" }
+      ]
+    },
+    {
+      "groupName": "File System Management (文件系统)",
+      "groupId": "64",
+      "description": "MCUmgr FS Management 组 - 文件读写",
+      "commands": [
+        { "opCode": "0", "name": "FS_DOWNLOAD", "description": "从设备下载文件 (offset/len/off)”}" },
+        { "opCode": "1", "name": "FS_UPLOAD", "description": "上传文件到设备" },
+        { "opCode": "2", "name": "FS_STATUS", "description": "查询文件状态 (大小/是否存在)" },
+        { "opCode": "3", "name": "FS_HASH_CHECKSUM", "description": "文件哈希/校验" },
+        { "opCode": "4", "name": "FS_SUPPORTED_HASH_CHECKSUM", "description": "支持的哈希算法列表" },
+        { "opCode": "5", "name": "FS_FILE_CLOSE", "description": "关闭文件" },
+        { "opCode": "6", "name": "FS_FILE_OPEN", "description": "打开文件" }
+      ]
+    },
+    {
+      "groupName": "Statistics Management (统计)",
+      "groupId": "2",
+      "commands": [
+        { "opCode": "0", "name": "STATS_READ", "description": "读取统计组数据" },
+        { "opCode": "1", "name": "STATS_LIST_GROUPS", "description": "列出所有统计组" }
+      ]
+    },
+    {
+      "groupName": "Settings Management (设置)",
+      "groupId": "3",
+      "commands": [
+        { "opCode": "0", "name": "SETTINGS_READ", "description": "读取设置项 (name)" },
+        { "opCode": "1", "name": "SETTINGS_WRITE", "description": "写入设置项 (name/value)" },
+        { "opCode": "2", "name": "SETTINGS_DELETE", "description": "删除设置项" },
+        { "opCode": "3", "name": "SETTINGS_COMMIT", "description": "提交设置变更" },
+        { "opCode": "4", "name": "SETTINGS_LOAD", "description": "加载设置" },
+        { "opCode": "5", "name": "SETTINGS_SAVE", "description": "保存设置" }
+      ]
+    },
+    {
+      "groupName": "Shell Management (远程Shell)",
+      "groupId": "63",
+      "commands": [
+        { "opCode": "0", "name": "SHELL_EXEC", "description": "远程执行Shell命令" }
+      ]
+    }
+  ],
+  "registers": [
+    { "address": "0x0000", "name": "FICR_DEVICE_ID", "type": "ro", "width": 64, "description": "设备唯一ID (Factory Information Configuration Register)" },
+    { "address": "0x0008", "name": "FICR_DEVICE_ADDR", "type": "ro", "width": 48, "description": "工厂蓝牙地址" },
+    { "address": "0x0010", "name": "FICR_INFO_PART", "type": "ro", "width": 32, "description": "芯片型号 (nRF54L15=0x5415, nRF5340=0x5340)" },
+    { "address": "0x0014", "name": "FICR_INFO_VARIANT", "type": "ro", "width": 32, "description": "芯片变体" },
+    { "address": "0x0018", "name": "FICR_INFO_PACKAGE", "type": "ro", "width": 32, "description": "封装类型" },
+    { "address": "0x001C", "name": "FICR_INFO_RAM", "type": "ro", "width": 32, "description": "RAM大小 (KB)" },
+    { "address": "0x0020", "name": "FICR_INFO_FLASH", "type": "ro", "width": 32, "description": "Flash大小 (KB)" },
+    { "address": "0x0100", "name": "CLOCK_HF_FREQ", "type": "ro", "width": 32, "description": "高频时钟频率 (MHz)" },
+    { "address": "0x0104", "name": "CLOCK_LF_FREQ", "type": "ro", "width": 32, "description": "低频时钟频率 (32768Hz)" },
+    { "address": "0x0200", "name": "RADIO_TX_POWER", "type": "rw", "width": 8, "description": "发射功率 (dBm, 范围 -40~+8)" },
+    { "address": "0x0201", "name": "RADIO_PHY", "type": "rw", "width": 8, "description": "PHY模式 (1M/2M/Coded S8/Coded S2)" },
+    { "address": "0x0202", "name": "RADIO_CHANNEL", "type": "rw", "width": 8, "description": "射频信道 (0-39)" },
+    { "address": "0x0210", "name": "BLE_CONN_INTERVAL", "type": "rw", "width": 16, "description": "连接间隔 (1.25ms单位)" },
+    { "address": "0x0212", "name": "BLE_CONN_LATENCY", "type": "rw", "width": 16, "description": "从机延迟" },
+    { "address": "0x0214", "name": "BLE_CONN_TIMEOUT", "type": "rw", "width": 16, "description": "超时 (10ms单位)" },
+    { "address": "0x0220", "name": "BLE_MTU_SIZE", "type": "rw", "width": 16, "description": "ATT MTU (23-517)" },
+    { "address": "0x0230", "name": "BLE_RSSI", "type": "ro", "width": 8, "description": "RSSI (dBm)" },
+    { "address": "0x0240", "name": "BLE_TX_PHY", "type": "ro", "width": 8, "description": "当前TX PHY" },
+    { "address": "0x0241", "name": "BLE_RX_PHY", "type": "ro", "width": 8, "description": "当前RX PHY" },
+    { "address": "0x0300", "name": "SAADC_BAT_VOLTAGE", "type": "ro", "width": 16, "description": "电池电压 (mV, SAADC采样)" },
+    { "address": "0x0302", "name": "SAADC_TEMP", "type": "ro", "width": 16, "description": "芯片温度 (0.25°C)" },
+    { "address": "0x0400", "name": "RTC_COUNTER", "type": "ro", "width": 32, "description": "RTC计数器 (32768Hz)" },
+    { "address": "0x0500", "name": "MCUBOOT_SLOT0_ADDR", "type": "ro", "width": 32, "description": "主镜像槽地址" },
+    { "address": "0x0504", "name": "MCUBOOT_SLOT1_ADDR", "type": "ro", "width": 32, "description": "次要镜像槽地址 (OTA暂存)" },
+    { "address": "0x0508", "name": "MCUBOOT_SLOT_SIZE", "type": "ro", "width": 32, "description": "镜像槽大小" },
+    { "address": "0x050C", "name": "MCUBOOT_ACTIVE_SLOT", "type": "ro", "width": 8, "description": "当前活动槽 (0/1)" },
+    { "address": "0x0510", "name": "MCUBOOT_CONFIRMED", "type": "ro", "width": 8, "description": "镜像确认状态" },
+    { "address": "0x0600", "name": "GPIO_LED1", "type": "rw", "width": 8, "description": "LED1状态" },
+    { "address": "0x0601", "name": "GPIO_LED2", "type": "rw", "width": 8, "description": "LED2状态" },
+    { "address": "0x0602", "name": "GPIO_LED3", "type": "rw", "width": 8, "description": "LED3状态 (RGB)" },
+    { "address": "0x0610", "name": "GPIO_BUTTON1", "type": "ro", "width": 8, "description": "按键1状态" },
+    { "address": "0x0611", "name": "GPIO_BUTTON2", "type": "ro", "width": 8, "description": "按键2状态" }
+  ],
+  "atCommands": [
+    { "command": "AT+VERSION?", "description": "查询固件版本" },
+    { "command": "AT+DEVICEID?", "description": "查询设备ID" },
+    { "command": "AT+BTADDR?", "description": "查询蓝牙MAC地址" },
+    { "command": "AT+BATT?", "description": "查询电池电压" },
+    { "command": "AT+TEMP?", "description": "查询芯片温度" },
+    { "command": "AT+RSSI?", "description": "查询RSSI" },
+    { "command": "AT+MTU?", "description": "查询MTU大小" },
+    { "command": "AT+PHY?", "description": "查询PHY模式" },
+    { "command": "AT+LED=<1-3>,<0|1>", "description": "控制LED" },
+    { "command": "AT+DUT", "description": "进入DUT模式" },
+    { "command": "AT+OTA", "description": "触发SMP OTA升级" },
+    { "command": "AT+RESET", "description": "软重启" }
+  ],
+  "deviceMatching": {
+    "namePrefixes": ["Nordic", "nRF54", "nRF53", "nRF52", "Thingy", "Smart Glasses"],
+    "manufacturerDataContains": "Nordic",
+    "serviceUuids": [
+      "8d53dc1d-1db7-4cd3-868b-8a527460aa84",
+      "6e400001-b5a3-f393-e0a9-e50e24dcca9e",
+      "00001523-1212-efde-1523-785feabcd123"
+    ]
+  }
+}

@@ -1,0 +1,564 @@
+{
+  "id": "actions_ats3089",
+  "name": "炬芯科技 ATS3089C 智能穿戴眼镜 BLE协议",
+  "vendor": {
+    "vendorName": "Actions Technology (炬芯科技)",
+    "chipSeries": "ATS3089C / ATW6095 系列",
+    "protocolVersion": "v1.0",
+    "website": "https://www.actionstech.com",
+    "description": "炬芯科技 ATS3089C 是双模蓝牙6.0单芯片智能穿戴SoC，采用MCU(MStar@202MHz) + DSP(@202MHz)双核架构。支持蓝牙双模(BR/EDR+BLE)、LE Audio(LC3)、AI ENC降噪。内置2D+2.5D GPU(JPEG Decoder)、QSPI/CPU8080/SPI显示接口。适用于智能眼镜、智能手表等。ATW6095为升级版，内置Cadence HIFI5@420MHz DSP + 100GOPS@INT8 CIM NPU。BR+BLE双连接功耗<100μA@500ms，MCU功耗12μA/MHz@3.8V。炬芯在Halliday AI眼镜项目上已量产。"
+  },
+  "services": [
+    {
+      "name": "Generic Access (标准)",
+      "uuid": "00001800-0000-1000-8000-00805f9b34fb",
+      "description": "标准GAP服务",
+      "characteristics": [
+        { "name": "Device Name", "uuid": "00002a00-0000-1000-8000-00805f9b34fb", "direction": "read_write" },
+        { "name": "Appearance", "uuid": "00002a01-0000-1000-8000-00805f9b34fb", "direction": "read" },
+        { "name": "PPCP", "uuid": "00002a04-0000-1000-8000-00805f9b34fb", "direction": "read" }
+      ]
+    },
+    {
+      "name": "Device Information (标准)",
+      "uuid": "0000180a-0000-1000-8000-00805f9b34fb",
+      "description": "设备信息服务",
+      "characteristics": [
+        { "name": "Manufacturer Name", "uuid": "00002a29-0000-1000-8000-00805f9b34fb", "direction": "read" },
+        { "name": "Model Number", "uuid": "00002a24-0000-1000-8000-00805f9b34fb", "direction": "read" },
+        { "name": "Firmware Revision", "uuid": "00002a26-0000-1000-8000-00805f9b34fb", "direction": "read" },
+        { "name": "Hardware Revision", "uuid": "00002a27-0000-1000-8000-00805f9b34fb", "direction": "read" },
+        { "name": "Software Revision", "uuid": "00002a28-0000-1000-8000-00805f9b34fb", "direction": "read" }
+      ]
+    },
+    {
+      "name": "Battery Service (标准)",
+      "uuid": "0000180f-0000-1000-8000-00805f9b34fb",
+      "characteristics": [
+        { "name": "Battery Level", "uuid": "00002a19-0000-1000-8000-00805f9b34fb", "direction": "notify_read", "notifyPayloadFormat": "uint8:percent" }
+      ]
+    },
+    {
+      "name": "Current Time Service (标准)",
+      "uuid": "00001805-0000-1000-8000-00805f9b34fb",
+      "description": "当前时间服务，用于眼镜时间同步",
+      "characteristics": [
+        { "name": "Current Time", "uuid": "00002a2b-0000-1000-8000-00805f9b34fb", "direction": "notify_read", "description": "当前时间" }
+      ]
+    },
+    {
+      "name": "Actions Smart Glasses Service",
+      "uuid": "0000fff0-0000-1000-8000-00805f9b34fb",
+      "description": "炬芯自定义智能眼镜主控制服务",
+      "characteristics": [
+        {
+          "name": "CMD TX (手机→眼镜)",
+          "uuid": "0000fff1-0000-1000-8000-00805f9b34fb",
+          "direction": "write",
+          "writePayloadFormat": "frame:actions_cmd",
+          "description": "命令写入"
+        },
+        {
+          "name": "CMD RX (眼镜→手机)",
+          "uuid": "0000fff2-0000-1000-8000-00805f9b34fb",
+          "direction": "notify",
+          "notifyPayloadFormat": "frame:actions_cmd",
+          "description": "响应/事件通知"
+        },
+        {
+          "name": "Display Data Channel",
+          "uuid": "0000fff3-0000-1000-8000-00805f9b34fb",
+          "direction": "write",
+          "writePayloadFormat": "frame:actions_display",
+          "description": "显示数据写入通道 (QSPI/CPU8080/JDI)"
+        }
+      ]
+    },
+    {
+      "name": "Actions Audio Service",
+      "uuid": "0000fff4-0000-1000-8000-00805f9b34fb",
+      "description": "音频控制服务 (SBC/AAC/LC3编解码, AI ENC降噪)",
+      "characteristics": [
+        {
+          "name": "Audio Control",
+          "uuid": "0000fff5-0000-1000-8000-00805f9b34fb",
+          "direction": "write_notify",
+          "writePayloadFormat": "frame:actions_cmd",
+          "notifyPayloadFormat": "frame:actions_cmd",
+          "description": "音频控制"
+        },
+        {
+          "name": "Audio Status",
+          "uuid": "0000fff6-0000-1000-8000-00805f9b34fb",
+          "direction": "notify",
+          "notifyPayloadFormat": "frame:actions_cmd",
+          "description": "音频状态通知"
+        }
+      ]
+    },
+    {
+      "name": "Actions Health/Sensor Service",
+      "uuid": "0000fff7-0000-1000-8000-00805f9b34fb",
+      "description": "健康监测与传感器服务 (心率/血氧/SensorHub)",
+      "characteristics": [
+        {
+          "name": "Heart Rate",
+          "uuid": "0000fff8-0000-1000-8000-00805f9b34fb",
+          "direction": "notify",
+          "notifyPayloadFormat": "raw:hr_stream",
+          "description": "心率数据 (bpm)"
+        },
+        {
+          "name": "SpO2",
+          "uuid": "0000fff9-0000-1000-8000-00805f9b34fb",
+          "direction": "notify",
+          "notifyPayloadFormat": "uint8:percent",
+          "description": "血氧饱和度 (%)"
+        },
+        {
+          "name": "Sensor Hub Data",
+          "uuid": "0000fffa-0000-1000-8000-00805f9b34fb",
+          "direction": "notify",
+          "notifyPayloadFormat": "raw:sensorhub_stream",
+          "description": "SensorHub综合数据流 (步数/运动/姿态)"
+        }
+      ]
+    },
+    {
+      "name": "Actions OTA Service",
+      "uuid": "0000fffb-0000-1000-8000-00805f9b34fb",
+      "description": "OTA固件升级服务",
+      "characteristics": [
+        {
+          "name": "OTA Control",
+          "uuid": "0000fffc-0000-1000-8000-00805f9b34fb",
+          "direction": "write_notify",
+          "writePayloadFormat": "frame:actions_ota",
+          "notifyPayloadFormat": "frame:actions_ota",
+          "description": "OTA控制通道"
+        },
+        {
+          "name": "OTA Data TX",
+          "uuid": "0000fffd-0000-1000-8000-00805f9b34fb",
+          "direction": "write_without_response",
+          "writePayloadFormat": "frame:actions_ota",
+          "description": "OTA固件数据流 (Write Without Response)"
+        }
+      ]
+    },
+    {
+      "name": "HID Service (标准)",
+      "uuid": "00001812-0000-1000-8000-00805f9b34fb",
+      "description": "HID over GATT (眼镜可做蓝牙遥控器/拍照键)",
+      "characteristics": [
+        { "name": "HID Report", "uuid": "00002a4d-0000-1000-8000-00805f9b34fb", "direction": "read_notify" },
+        { "name": "HID Control Point", "uuid": "00002a4c-0000-1000-8000-00805f9b34fb", "direction": "write_without_response" }
+      ]
+    }
+  ],
+  "frameFormats": [
+    {
+      "name": "actions_cmd",
+      "description": "炬芯命令帧格式",
+      "endian": "little",
+      "fields": [
+        {
+          "name": "magic",
+          "encoding": "hex",
+          "byteLength": 2,
+          "value": "0xACAC",
+          "description": "帧头"
+        },
+        {
+          "name": "cmdType",
+          "encoding": "uint8",
+          "byteLength": 1,
+          "description": "命令类型",
+          "enumMap": {
+            "0x00": "REQUEST",
+            "0x01": "RESPONSE",
+            "0x02": "NOTIFY",
+            "0x03": "ERROR"
+          }
+        },
+        {
+          "name": "category",
+          "encoding": "uint8",
+          "byteLength": 1,
+          "description": "功能域",
+          "enumMap": {
+            "0x01": "SYSTEM",
+            "0x02": "AUDIO",
+            "0x03": "DISPLAY",
+            "0x04": "SENSOR",
+            "0x05": "HEALTH",
+            "0x06": "CONNECTIVITY",
+            "0x07": "NOTIFICATION",
+            "0x08": "FILE",
+            "0x09": "OTA",
+            "0x0A": "TEST"
+          }
+        },
+        {
+          "name": "cmdCode",
+          "encoding": "uint16",
+          "byteLength": 2,
+          "endian": "little",
+          "description": "命令码"
+        },
+        {
+          "name": "seqNum",
+          "encoding": "uint8",
+          "byteLength": 1,
+          "description": "序列号 (匹配请求响应)"
+        },
+        {
+          "name": "dataLen",
+          "encoding": "uint16",
+          "byteLength": 2,
+          "endian": "little",
+          "description": "数据长度"
+        },
+        {
+          "name": "payload",
+          "encoding": "bytes",
+          "byteLength": 0,
+          "lengthSource": "dataLen",
+          "description": "负载数据"
+        },
+        {
+          "name": "checksum",
+          "encoding": "uint16",
+          "byteLength": 2,
+          "endian": "little",
+          "description": "CRC-16/IBM 校验"
+        },
+        {
+          "name": "tail",
+          "encoding": "hex",
+          "byteLength": 2,
+          "value": "0xACAC",
+          "description": "帧尾"
+        }
+      ],
+      "checksum": {
+        "type": "crc16_ibm",
+        "startField": "magic",
+        "endField": "payload"
+      }
+    },
+    {
+      "name": "actions_display",
+      "description": "显示数据帧 (用于推送UI/图像到眼镜显示屏)",
+      "endian": "little",
+      "fields": [
+        {
+          "name": "magic",
+          "encoding": "hex",
+          "byteLength": 1,
+          "value": "0xAA"
+        },
+        {
+          "name": "displayCmd",
+          "encoding": "uint8",
+          "byteLength": 1,
+          "description": "显示命令",
+          "enumMap": {
+            "0x01": "SET_BRIGHTNESS",
+            "0x02": "PUSH_IMAGE",
+            "0x03": "PUSH_TEXT",
+            "0x04": "CLEAR_SCREEN",
+            "0x05": "SET_BACKLIGHT"
+          }
+        },
+        {
+          "name": "imgFormat",
+          "encoding": "uint8",
+          "byteLength": 1,
+          "description": "图像格式",
+          "enumMap": {
+            "0x00": "RAW",
+            "0x01": "JPEG",
+            "0x02": "RGB565",
+            "0x03": "RGB888"
+          }
+        },
+        {
+          "name": "width",
+          "encoding": "uint16",
+          "byteLength": 2,
+          "endian": "little",
+          "description": "宽度 (px)"
+        },
+        {
+          "name": "height",
+          "encoding": "uint16",
+          "byteLength": 2,
+          "endian": "little",
+          "description": "高度 (px)"
+        },
+        {
+          "name": "offsetX",
+          "encoding": "uint16",
+          "byteLength": 2,
+          "endian": "little",
+          "description": "X偏移"
+        },
+        {
+          "name": "offsetY",
+          "encoding": "uint16",
+          "byteLength": 2,
+          "endian": "little",
+          "description": "Y偏移"
+        },
+        {
+          "name": "dataLen",
+          "encoding": "uint16",
+          "byteLength": 2,
+          "endian": "little",
+          "description": "数据长度"
+        },
+        {
+          "name": "displayData",
+          "encoding": "bytes",
+          "byteLength": 0,
+          "lengthSource": "dataLen",
+          "description": "显示数据 (JPEG/RGB)"
+        }
+      ]
+    },
+    {
+      "name": "actions_ota",
+      "description": "炬芯OTA升级帧",
+      "endian": "little",
+      "fields": [
+        {
+          "name": "magic",
+          "encoding": "hex",
+          "byteLength": 2,
+          "value": "0x0A0A"
+        },
+        {
+          "name": "otaCmd",
+          "encoding": "uint8",
+          "byteLength": 1,
+          "description": "OTA命令",
+          "enumMap": {
+            "0x01": "OTA_PREPARE",
+            "0x02": "OTA_SEND_IMAGE_INFO",
+            "0x03": "OTA_SEND_DATA",
+            "0x04": "OTA_VERIFY_CRC",
+            "0x05": "OTA_REBOOT",
+            "0x06": "OTA_GET_STATUS",
+            "0x07": "OTA_ABORT"
+          }
+        },
+        {
+          "name": "totalSize",
+          "encoding": "uint32",
+          "byteLength": 4,
+          "endian": "little",
+          "description": "固件总大小"
+        },
+        {
+          "name": "offset",
+          "encoding": "uint32",
+          "byteLength": 4,
+          "endian": "little",
+          "description": "当前偏移"
+        },
+        {
+          "name": "chunkLen",
+          "encoding": "uint16",
+          "byteLength": 2,
+          "endian": "little",
+          "description": "本块数据长度"
+        },
+        {
+          "name": "otaChunk",
+          "encoding": "bytes",
+          "byteLength": 0,
+          "lengthSource": "chunkLen",
+          "description": "固件分块数据"
+        },
+        {
+          "name": "crc16",
+          "encoding": "uint16",
+          "byteLength": 2,
+          "endian": "little",
+          "description": "CRC-16/IBM"
+        }
+      ],
+      "checksum": {
+        "type": "crc16_ibm",
+        "startField": "magic",
+        "endField": "otaChunk"
+      }
+    }
+  ],
+  "commands": [
+    {
+      "groupName": "系统控制",
+      "categoryId": "0x01",
+      "commands": [
+        { "opCode": "0x0001", "name": "GET_DEVICE_INFO", "description": "获取设备信息" },
+        { "opCode": "0x0002", "name": "GET_BATTERY", "description": "获取电池信息" },
+        { "opCode": "0x0003", "name": "GET_STORAGE", "description": "获取存储信息" },
+        { "opCode": "0x0004", "name": "SET_TIME", "description": "同步时间" },
+        { "opCode": "0x0005", "name": "SET_LANGUAGE", "description": "设置系统语言" },
+        { "opCode": "0x0006", "name": "GET_POWER_MODE", "description": "获取电源模式" },
+        { "opCode": "0x0007", "name": "SET_POWER_MODE", "description": "设置电源模式 (正常/省电)" },
+        { "opCode": "0x0008", "name": "REBOOT", "description": "重启" },
+        { "opCode": "0x0009", "name": "FACTORY_RESET", "description": "恢复出厂" },
+        { "opCode": "0x000A", "name": "GET_UPTIME", "description": "获取运行时间" }
+      ]
+    },
+    {
+      "groupName": "音频控制 (AI ENC / LE Audio)",
+      "categoryId": "0x02",
+      "commands": [
+        { "opCode": "0x0101", "name": "SET_VOLUME", "description": "设置音量 (0-16)" },
+        { "opCode": "0x0102", "name": "GET_VOLUME", "description": "查询音量" },
+        { "opCode": "0x0103", "name": "PLAY_PAUSE", "description": "播放/暂停 (AVRCP)" },
+        { "opCode": "0x0104", "name": "NEXT_TRACK", "description": "下一曲" },
+        { "opCode": "0x0105", "name": "PREV_TRACK", "description": "上一曲" },
+        { "opCode": "0x0106", "name": "SET_AI_ENC", "description": "设置AI ENC降噪 (开/关/模式)" },
+        { "opCode": "0x0107", "name": "SET_CODEC", "description": "设置编解码器 (SBC/AAC/LC3)" },
+        { "opCode": "0x0108", "name": "SET_LE_AUDIO", "description": "启用/禁用LE Audio" },
+        { "opCode": "0x0109", "name": "SET_MIC_MODE", "description": "麦克风模式 (2AMIC/2DMIC/4AMIC/8DMIC)" },
+        { "opCode": "0x010A", "name": "SET_AUDIO_EFFECT", "description": "音效 (20 Bands PEQ/DRC/AGC)" }
+      ]
+    },
+    {
+      "groupName": "显示控制 (2D/2.5D GPU + JPEG Decoder)",
+      "categoryId": "0x03",
+      "commands": [
+        { "opCode": "0x0201", "name": "SET_BRIGHTNESS", "description": "设置屏幕亮度" },
+        { "opCode": "0x0202", "name": "SET_BACKLIGHT", "description": "设置背光" },
+        { "opCode": "0x0203", "name": "DISPLAY_ONOFF", "description": "显示屏开/关" },
+        { "opCode": "0x0204", "name": "PUSH_IMAGE", "description": "推送JPEG/RGB图像到显示" },
+        { "opCode": "0x0205", "name": "PUSH_TEXT", "description": "推送文字到显示" },
+        { "opCode": "0x0206", "name": "CLEAR_SCREEN", "description": "清屏" },
+        { "opCode": "0x0207", "name": "SET_DISPLAY_INTERFACE", "description": "设置显示接口 (QSPI/CPU8080/JDI Parallel)" },
+        { "opCode": "0x0208", "name": "SET_RESOLUTION", "description": "设置分辨率" },
+        { "opCode": "0x0209", "name": "SET_UI_THEME", "description": "设置UI主题" }
+      ]
+    },
+    {
+      "groupName": "传感器控制 (SensorHub)",
+      "categoryId": "0x04",
+      "commands": [
+        { "opCode": "0x0301", "name": "START_PEDOMETER", "description": "启动计步器" },
+        { "opCode": "0x0302", "name": "GET_STEP_COUNT", "description": "获取步数" },
+        { "opCode": "0x0303", "name": "START_MOTION_DETECT", "description": "启动运动检测" },
+        { "opCode": "0x0304", "name": "SET_GESTURE_DETECT", "description": "手势检测 (点头/摇头/抬腕)" },
+        { "opCode": "0x0305", "name": "START_SENSOR_STREAM", "description": "启动传感器数据流" },
+        { "opCode": "0x0306", "name": "STOP_SENSOR_STREAM", "description": "停止传感器数据流" }
+      ]
+    },
+    {
+      "groupName": "健康监测",
+      "categoryId": "0x05",
+      "commands": [
+        { "opCode": "0x0401", "name": "START_HR", "description": "启动心率监测" },
+        { "opCode": "0x0402", "name": "STOP_HR", "description": "停止心率监测" },
+        { "opCode": "0x0403", "name": "GET_HR_DATA", "description": "获取心率数据" },
+        { "opCode": "0x0404", "name": "START_SPO2", "description": "启动血氧监测" },
+        { "opCode": "0x0405", "name": "STOP_SPO2", "description": "停止血氧监测" },
+        { "opCode": "0x0406", "name": "START_SLEEP_MONITOR", "description": "启动睡眠监测" },
+        { "opCode": "0x0407", "name": "GET_HEALTH_SUMMARY", "description": "获取健康汇总" }
+      ]
+    },
+    {
+      "groupName": "连接管理",
+      "categoryId": "0x06",
+      "commands": [
+        { "opCode": "0x0501", "name": "GET_BT_STATUS", "description": "获取蓝牙连接状态" },
+        { "opCode": "0x0502", "name": "SCAN_BT_DEVICES", "description": "扫描蓝牙设备" },
+        { "opCode": "0x0503", "name": "CONNECT_DEVICE", "description": "连接蓝牙设备" },
+        { "opCode": "0x0504", "name": "DISCONNECT_DEVICE", "description": "断开设备" },
+        { "opCode": "0x0505", "name": "GET_PAIRED_LIST", "description": "获取已配对列表" },
+        { "opCode": "0x0506", "name": "SET_BT_VISIBLE", "description": "设置蓝牙可发现" }
+      ]
+    },
+    {
+      "groupName": "通知管理",
+      "categoryId": "0x07",
+      "commands": [
+        { "opCode": "0x0601", "name": "PUSH_NOTIFICATION", "description": "推送通知到显示" },
+        { "opCode": "0x0602", "name": "PUSH_CALL", "description": "推送来电通知" },
+        { "opCode": "0x0603", "name": "PUSH_SMS", "description": "推送短信" },
+        { "opCode": "0x0604", "name": "PUSH_APP_MSG", "description": "推送App消息" },
+        { "opCode": "0x0605", "name": "CLEAR_NOTIFICATIONS", "description": "清除通知" },
+        { "opCode": "0x0606", "name": "SET_NOTIF_FILTER", "description": "设置通知过滤" }
+      ]
+    },
+    {
+      "groupName": "测试/DUT",
+      "categoryId": "0x0A",
+      "commands": [
+        { "opCode": "0x0901", "name": "ENTER_DUT_MODE", "description": "进入DUT产测模式" },
+        { "opCode": "0x0902", "name": "RF_TEST_START", "description": "启动RF测试 (TX/RX)" },
+        { "opCode": "0x0903", "name": "RF_TEST_STOP", "description": "停止RF测试" },
+        { "opCode": "0x0904", "name": "SET_TX_POWER", "description": "设置发射功率 (max 14dBm)" },
+        { "opCode": "0x0905", "name": "SET_TX_CHANNEL", "description": "设置TX信道 (0-39)" },
+        { "opCode": "0x0906", "name": "SET_TX_PATTERN", "description": "设置TX模式 (PRBS9/PRBS15/10101010)" },
+        { "opCode": "0x0907", "name": "GET_RX_RSSI", "description": "获取RX RSSI" },
+        { "opCode": "0x0908", "name": "AUDIO_LOOPBACK", "description": "音频回环测试" },
+        { "opCode": "0x0909", "name": "DISPLAY_TEST", "description": "显示测试 (红/绿/蓝/白)" },
+        { "opCode": "0x090A", "name": "BATTERY_TEST", "description": "电池测试" }
+      ]
+    }
+  ],
+  "registers": [
+    { "address": "0x0000", "name": "CHIP_ID", "type": "ro", "width": 32, "description": "芯片ID (ATS3089C/ATW6095)" },
+    { "address": "0x0004", "name": "CHIP_REV", "type": "ro", "width": 32, "description": "芯片版本" },
+    { "address": "0x0008", "name": "MCU_FREQ", "type": "ro", "width": 32, "description": "MCU频率 (202MHz / 240MHz)" },
+    { "address": "0x000C", "name": "DSP_FREQ", "type": "ro", "width": 32, "description": "DSP频率 (202MHz / 420MHz)" },
+    { "address": "0x0010", "name": "MCU_LOAD", "type": "ro", "width": 8, "description": "MCU使用率 (%)" },
+    { "address": "0x0011", "name": "DSP_LOAD", "type": "ro", "width": 8, "description": "DSP使用率 (%)" },
+    { "address": "0x0018", "name": "RAM_SIZE", "type": "ro", "width": 32, "description": "SRAM大小 (1168KB)" },
+    { "address": "0x001C", "name": "PSRAM_SIZE", "type": "ro", "width": 32, "description": "内置PSRAM (8MB)" },
+    { "address": "0x0020", "name": "FLASH_SIZE", "type": "ro", "width": 32, "description": "SPI NOR Flash (4MB/8MB DTR)" },
+    { "address": "0x0030", "name": "BAT_LEVEL", "type": "ro", "width": 8, "description": "电池电量 (%)" },
+    { "address": "0x0031", "name": "BAT_VOLTAGE", "type": "ro", "width": 16, "description": "电池电压 (mV)" },
+    { "address": "0x0032", "name": "CHARGE_STATUS", "type": "ro", "width": 8, "description": "充电状态" },
+    { "address": "0x0040", "name": "VOLUME", "type": "rw", "width": 8, "description": "音量 (0-16)" },
+    { "address": "0x0041", "name": "CODEC_TYPE", "type": "rw", "width": 8, "description": "编解码器类型" },
+    { "address": "0x0042", "name": "SAMPLE_RATE", "type": "rw", "width": 32, "description": "采样率" },
+    { "address": "0x0043", "name": "AI_ENC_EN", "type": "rw", "width": 8, "description": "AI ENC降噪使能" },
+    { "address": "0x0044", "name": "LE_AUDIO_EN", "type": "rw", "width": 8, "description": "LE Audio使能" },
+    { "address": "0x0050", "name": "DISPLAY_BRIGHTNESS", "type": "rw", "width": 8, "description": "屏幕亮度" },
+    { "address": "0x0051", "name": "DISPLAY_ONOFF", "type": "rw", "width": 8, "description": "显示屏开关" },
+    { "address": "0x0052", "name": "DISPLAY_IF", "type": "rw", "width": 8, "description": "显示接口 (QSPI/CPU8080/JDI)" },
+    { "address": "0x0060", "name": "HR_VALUE", "type": "ro", "width": 8, "description": "心率值 (bpm)" },
+    { "address": "0x0061", "name": "SPO2_VALUE", "type": "ro", "width": 8, "description": "血氧值 (%)" },
+    { "address": "0x0070", "name": "STEP_COUNT", "type": "ro", "width": 32, "description": "步数" },
+    { "address": "0x0080", "name": "TX_POWER", "type": "rw", "width": 8, "description": "发射功率 (max 14dBm)" },
+    { "address": "0x0081", "name": "BLE_RX_SENS", "type": "ro", "width": 16, "description": "BLE接收灵敏度 (-99dBm @1M)" },
+    { "address": "0x0090", "name": "NPU_OPS", "type": "ro", "width": 32, "description": "NPU算力 (ATW6095: 100GOPS@INT8)" },
+    { "address": "0x00A0", "name": "POWER_MODE", "type": "rw", "width": 8, "description": "电源模式" }
+  ],
+  "atCommands": [
+    { "command": "AT+VERSION?", "description": "查询固件版本" },
+    { "command": "AT+CHIPID?", "description": "查询芯片ID" },
+    { "command": "AT+BTADDR?", "description": "查询蓝牙地址" },
+    { "command": "AT+BTNAME?", "description": "查询蓝牙名称" },
+    { "command": "AT+BATT?", "description": "查询电池" },
+    { "command": "AT+VOL=<0-16>", "description": "设置音量" },
+    { "command": "AT+AIEC=<0|1>", "description": "AI ENC降噪开关" },
+    { "command": "AT+CODEC=<type>", "description": "设置编解码器" },
+    { "command": "AT+DISP=<on|off>", "description": "显示屏开关" },
+    { "command": "AT+BRIGHT=<0-255>", "description": "设置亮度" },
+    { "command": "AT+HR=<on|off>", "description": "心率监测开关" },
+    { "command": "AT+SPO2=<on|off>", "description": "血氧监测开关" },
+    { "command": "AT+DUT", "description": "进入DUT模式" },
+    { "command": "AT+OTA", "description": "进入OTA模式" },
+    { "command": "AT+REBOOT", "description": "重启" }
+  ],
+  "deviceMatching": {
+    "namePrefixes": ["Actions", "ATS3089", "ATW6095", "Halliday", "Smart Glasses"],
+    "manufacturerDataContains": "Actions",
+    "serviceUuids": ["0000fff0-0000-1000-8000-00805f9b34fb"]
+  }
+}

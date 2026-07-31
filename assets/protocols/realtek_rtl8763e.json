@@ -1,0 +1,484 @@
+{
+  "id": "realtek_rtl8763e",
+  "name": "瑞昱 RTL8763E 智能音频眼镜 BLE协议",
+  "vendor": {
+    "vendorName": "Realtek (瑞昱半导体)",
+    "chipSeries": "RTL8763E / RTL8763B 系列",
+    "protocolVersion": "v1.0",
+    "website": "https://www.realtek.com",
+    "description": "瑞昱 RTL8763E 系列是蓝牙5.3双模音频SoC，支持LE Audio(CIS/BIS)、BR/EDR/LE-1M/LE-2M。采用ARM Cortex-M33 (RealM300) @100MHz + DSP双核架构，内置AES128/256/SHA256/RSA-2048安全引擎。支持SBC/mSBC/LC3/MP3编解码，面向智能音频眼镜、TWS耳机、助听器眼镜等。OTA使用瑞昱标准GATT OTA Service，帧格式采用模块化数据包协议。RTL8773DO为助听器眼镜专用型号，支持超低延迟AI降噪。"
+  },
+  "services": [
+    {
+      "name": "Generic Access (标准)",
+      "uuid": "00001800-0000-1000-8000-00805f9b34fb",
+      "description": "蓝牙标准 GAP 服务",
+      "characteristics": [
+        {
+          "name": "Device Name",
+          "uuid": "00002a00-0000-1000-8000-00805f9b34fb",
+          "direction": "read_write",
+          "description": "设备名称 (可读写)"
+        },
+        {
+          "name": "Appearance",
+          "uuid": "00002a01-0000-1000-8000-00805f9b34fb",
+          "direction": "read",
+          "description": "外观类型"
+        },
+        {
+          "name": "Peripheral Preferred Connection Parameters",
+          "uuid": "00002a04-0000-1000-8000-00805f9b34fb",
+          "direction": "read",
+          "description": "首选连接参数"
+        }
+      ]
+    },
+    {
+      "name": "Generic Attribute (标准)",
+      "uuid": "00001801-0000-1000-8000-00805f9b34fb",
+      "description": "标准GATT服务",
+      "characteristics": [
+        {
+          "name": "Service Changed",
+          "uuid": "00002a05-0000-1000-8000-00805f9b34fb",
+          "direction": "indicate",
+          "description": "服务变更指示"
+        }
+      ]
+    },
+    {
+      "name": "Device Information (标准)",
+      "uuid": "0000180a-0000-1000-8000-00805f9b34fb",
+      "description": "设备信息服务",
+      "characteristics": [
+        { "name": "Manufacturer Name", "uuid": "00002a29-0000-1000-8000-00805f9b34fb", "direction": "read" },
+        { "name": "Model Number", "uuid": "00002a24-0000-1000-8000-00805f9b34fb", "direction": "read" },
+        { "name": "Serial Number", "uuid": "00002a25-0000-1000-8000-00805f9b34fb", "direction": "read" },
+        { "name": "Firmware Revision", "uuid": "00002a26-0000-1000-8000-00805f9b34fb", "direction": "read" },
+        { "name": "Hardware Revision", "uuid": "00002a27-0000-1000-8000-00805f9b34fb", "direction": "read" },
+        { "name": "Software Revision", "uuid": "00002a28-0000-1000-8000-00805f9b34fb", "direction": "read" },
+        { "name": "System ID", "uuid": "00002a23-0000-1000-8000-00805f9b34fb", "direction": "read" },
+        { "name": "IEEE 11073-20601 Regulatory", "uuid": "00002a2a-0000-1000-8000-00805f9b34fb", "direction": "read" },
+        { "name": "PnP ID", "uuid": "00002a50-0000-1000-8000-00805f9b34fb", "direction": "read" }
+      ]
+    },
+    {
+      "name": "Battery Service (标准)",
+      "uuid": "0000180f-0000-1000-8000-00805f9b34fb",
+      "description": "标准电池服务",
+      "characteristics": [
+        {
+          "name": "Battery Level",
+          "uuid": "00002a19-0000-1000-8000-00805f9b34fb",
+          "direction": "notify_read",
+          "description": "电池电量 (0-100%)",
+          "notifyPayloadFormat": "uint8:percent"
+        }
+      ]
+    },
+    {
+      "name": "Realtek Custom Service (主控制服务)",
+      "uuid": "0000abf0-0000-1000-8000-00805f9b34fb",
+      "description": "瑞昱自定义主控制服务，承载设备控制/音频配置/ANC等全部命令通道",
+      "characteristics": [
+        {
+          "name": "Command Write",
+          "uuid": "0000abf1-0000-1000-8000-00805f9b34fb",
+          "direction": "write",
+          "writePayloadFormat": "frame:rtk_cmd",
+          "description": "命令写入通道"
+        },
+        {
+          "name": "Response/Event Notify",
+          "uuid": "0000abf2-0000-1000-8000-00805f9b34fb",
+          "direction": "notify",
+          "notifyPayloadFormat": "frame:rtk_cmd",
+          "description": "响应与事件通知通道"
+        },
+        {
+          "name": "Audio Data Stream",
+          "uuid": "0000abf3-0000-1000-8000-00805f9b34fb",
+          "direction": "notify",
+          "notifyPayloadFormat": "raw:audio_lc3",
+          "description": "LE Audio (LC3) 音频数据流"
+        }
+      ]
+    },
+    {
+      "name": "Realtek ANC Service (降噪控制)",
+      "uuid": "0000ac10-0000-1000-8000-00805f9b34fb",
+      "description": "ANC主动降噪/通透模式/环境音监听控制服务",
+      "characteristics": [
+        {
+          "name": "ANC Mode",
+          "uuid": "0000ac11-0000-1000-8000-00805f9b34fb",
+          "direction": "write_notify",
+          "writePayloadFormat": "frame:rtk_cmd",
+          "notifyPayloadFormat": "frame:rtk_cmd",
+          "description": "降噪模式控制 (ANC/通透/关闭)"
+        },
+        {
+          "name": "ANC Strength",
+          "uuid": "0000ac12-0000-1000-8000-00805f9b34fb",
+          "direction": "write",
+          "writePayloadFormat": "uint8",
+          "description": "降噪强度 (0=弱, 1=中, 2=强)"
+        }
+      ]
+    },
+    {
+      "name": "Realtek LE Audio Service",
+      "uuid": "0000ad20-0000-1000-8000-00805f9b34fb",
+      "description": "LE Audio Auracast广播音频服务 (CIS/BIS)",
+      "characteristics": [
+        {
+          "name": "Auracast Control",
+          "uuid": "0000ad21-0000-1000-8000-00805f9b34fb",
+          "direction": "write",
+          "writePayloadFormat": "frame:rtk_cmd",
+          "description": "Auracast广播控制"
+        },
+        {
+          "name": "Audio Codec Config",
+          "uuid": "0000ad22-0000-1000-8000-00805f9b34fb",
+          "direction": "write_notify",
+          "writePayloadFormat": "frame:rtk_cmd",
+          "notifyPayloadFormat": "frame:rtk_cmd",
+          "description": "编解码配置 (SBC/mSBC/LC3/MP3)"
+        }
+      ]
+    },
+    {
+      "name": "Realtek OTA Service",
+      "uuid": "0000ae30-0000-1000-8000-00805f9b34fb",
+      "description": "瑞昱标准OTA固件升级服务",
+      "characteristics": [
+        {
+          "name": "OTA Control Point",
+          "uuid": "0000ae31-0000-1000-8000-00805f9b34fb",
+          "direction": "write_notify",
+          "writePayloadFormat": "frame:rtk_ota",
+          "notifyPayloadFormat": "frame:rtk_ota",
+          "description": "OTA控制点 (开始/暂停/结束/验证)"
+        },
+        {
+          "name": "OTA Data",
+          "uuid": "0000ae32-0000-1000-8000-00805f9b34fb",
+          "direction": "write_without_response",
+          "writePayloadFormat": "frame:rtk_ota",
+          "description": "OTA固件数据流 (Write Without Response)"
+        }
+      ]
+    },
+    {
+      "name": "ANCS (Apple Notification Center)",
+      "uuid": "7905f431-b5ce-4e99-a40f-15b2f956d4ed",
+      "description": "Apple通知中心服务 (iOS消息推送)",
+      "characteristics": [
+        {
+          "name": "ANCS Notification Source",
+          "uuid": "9fbf120d-6301-42d9-8c58-25e699a6ddff",
+          "direction": "notify",
+          "description": "iOS通知来源"
+        }
+      ]
+    }
+  ],
+  "frameFormats": [
+    {
+      "name": "rtk_cmd",
+      "description": "瑞昱通用命令帧。使用 Type-Length-Value 格式，支持命令/响应/事件",
+      "endian": "little",
+      "fields": [
+        {
+          "name": "sync",
+          "encoding": "hex",
+          "byteLength": 2,
+          "value": "0x5254",
+          "description": "同步头 'RT'"
+        },
+        {
+          "name": "category",
+          "encoding": "uint8",
+          "byteLength": 1,
+          "description": "命令类别",
+          "enumMap": {
+            "0x01": "SYSTEM",
+            "0x02": "AUDIO",
+            "0x03": "ANC",
+            "0x04": "LE_AUDIO",
+            "0x05": "BATTERY",
+            "0x06": "DISPLAY",
+            "0x07": "SENSOR",
+            "0x08": "EQUALIZER",
+            "0x09": "TOUCH",
+            "0x0A": "OTA_CTRL"
+          }
+        },
+        {
+          "name": "opcode",
+          "encoding": "uint8",
+          "byteLength": 1,
+          "description": "操作码"
+        },
+        {
+          "name": "paramLen",
+          "encoding": "uint8",
+          "byteLength": 1,
+          "description": "参数长度"
+        },
+        {
+          "name": "params",
+          "encoding": "bytes",
+          "byteLength": 0,
+          "lengthSource": "paramLen",
+          "description": "参数数据"
+        },
+        {
+          "name": "crc8",
+          "encoding": "uint8",
+          "byteLength": 1,
+          "description": "CRC-8校验 (从sync到params末尾)"
+        }
+      ],
+      "checksum": {
+        "type": "crc8",
+        "startField": "sync",
+        "endField": "params"
+      }
+    },
+    {
+      "name": "rtk_ota",
+      "description": "瑞昱OTA固件升级帧",
+      "endian": "little",
+      "fields": [
+        {
+          "name": "sync",
+          "encoding": "hex",
+          "byteLength": 2,
+          "value": "0xAEAE"
+        },
+        {
+          "name": "otaOpcode",
+          "encoding": "uint8",
+          "byteLength": 1,
+          "description": "OTA操作码",
+          "enumMap": {
+            "0x01": "OTA_START",
+            "0x02": "OTA_DATA",
+            "0x03": "OTA_VERIFY",
+            "0x04": "OTA_COMPLETE",
+            "0x05": "OTA_ABORT",
+            "0x06": "OTA_STATUS",
+            "0x07": "OTA_ERASE"
+          }
+        },
+        {
+          "name": "seqNum",
+          "encoding": "uint16",
+          "byteLength": 2,
+          "endian": "little",
+          "description": "序列号 (用于数据包)"
+        },
+        {
+          "name": "dataLen",
+          "encoding": "uint16",
+          "byteLength": 2,
+          "endian": "little",
+          "description": "数据长度"
+        },
+        {
+          "name": "otaData",
+          "encoding": "bytes",
+          "byteLength": 0,
+          "lengthSource": "dataLen",
+          "description": "OTA数据"
+        },
+        {
+          "name": "crc16",
+          "encoding": "uint16",
+          "byteLength": 2,
+          "endian": "little",
+          "description": "CRC-16/CCITT校验"
+        }
+      ],
+      "checksum": {
+        "type": "crc16_ccitt",
+        "startField": "sync",
+        "endField": "otaData"
+      }
+    },
+    {
+      "name": "audio_lc3",
+      "description": "LE Audio LC3编解码音频帧",
+      "endian": "little",
+      "fields": [
+        {
+          "name": "frameSeq",
+          "encoding": "uint8",
+          "byteLength": 1,
+          "description": "帧序号"
+        },
+        {
+          "name": "timestamp",
+          "encoding": "uint32",
+          "byteLength": 4,
+          "endian": "little",
+          "description": "时间戳 (μs)"
+        },
+        {
+          "name": "codecFrame",
+          "encoding": "bytes",
+          "byteLength": 0,
+          "description": "LC3编码帧数据 (10ms/20ms帧)"
+        }
+      ]
+    }
+  ],
+  "commands": [
+    {
+      "groupName": "系统控制",
+      "categoryId": "0x01",
+      "commands": [
+        { "opCode": "0x01", "name": "GET_DEVICE_INFO", "description": "获取设备信息 (型号/MAC/固件版本)" },
+        { "opCode": "0x02", "name": "GET_BT_INFO", "description": "获取蓝牙信息 (地址/名称/连接状态)" },
+        { "opCode": "0x03", "name": "SET_BT_NAME", "description": "设置蓝牙名称" },
+        { "opCode": "0x04", "name": "GET_BATTERY", "description": "获取电池电量" },
+        { "opCode": "0x05", "name": "SET_TIME", "description": "同步时间" },
+        { "opCode": "0x06", "name": "GET_TEMPERATURE", "description": "获取芯片温度" },
+        { "opCode": "0x07", "name": "ENTER_DUT_MODE", "description": "进入DUT测试模式" },
+        { "opCode": "0x08", "name": "REBOOT", "description": "重启设备" },
+        { "opCode": "0x09", "name": "FACTORY_RESET", "description": "恢复出厂" },
+        { "opCode": "0x0A", "name": "GET_POWER_CONSUMPTION", "description": "获取功耗数据" }
+      ]
+    },
+    {
+      "groupName": "音频控制",
+      "categoryId": "0x02",
+      "commands": [
+        { "opCode": "0x01", "name": "SET_VOLUME", "description": "设置音量 (0-16)" },
+        { "opCode": "0x02", "name": "GET_VOLUME", "description": "查询当前音量" },
+        { "opCode": "0x03", "name": "SET_MUTE", "description": "静音/取消静音" },
+        { "opCode": "0x04", "name": "PLAY_PAUSE", "description": "播放/暂停 (AVRCP)" },
+        { "opCode": "0x05", "name": "NEXT_TRACK", "description": "下一首" },
+        { "opCode": "0x06", "name": "PREV_TRACK", "description": "上一首" },
+        { "opCode": "0x07", "name": "SET_MIC_MODE", "description": "设置麦克风模式 (模拟/数字/PDM)" },
+        { "opCode": "0x08", "name": "SET_MIC_GAIN", "description": "设置麦克风增益" },
+        { "opCode": "0x09", "name": "SET_AUDIO_SOURCE", "description": "切换音频源 (A2DP/HFP/I2S)" },
+        { "opCode": "0x0A", "name": "SET_VOICE_PROMPT", "description": "语音提示开关" }
+      ]
+    },
+    {
+      "groupName": "ANC降噪控制 (RCV技术)",
+      "categoryId": "0x03",
+      "commands": [
+        { "opCode": "0x01", "name": "SET_ANC_MODE", "description": "设置降噪模式 (0=OFF, 1=ANC, 2=透明, 3=环境监听)" },
+        { "opCode": "0x02", "name": "GET_ANC_MODE", "description": "查询当前降噪模式" },
+        { "opCode": "0x03", "name": "SET_ANC_STRENGTH", "description": "设置降噪强度 (弱/中/强)" },
+        { "opCode": "0x04", "name": "SET_WIND_NOISE_REDUCTION", "description": "风噪抑制开关" },
+        { "opCode": "0x05", "name": "SET_HEARING_ENHANCE", "description": "听力增强 (助听器模式)" },
+        { "opCode": "0x06", "name": "GET_ANC_COEF", "description": "获取ANC滤波器系数" },
+        { "opCode": "0x07", "name": "SET_AMBIENT_VOLUME", "description": "设置环境音音量" }
+      ]
+    },
+    {
+      "groupName": "LE Audio / Auracast",
+      "categoryId": "0x04",
+      "commands": [
+        { "opCode": "0x01", "name": "SET_LE_AUDIO_MODE", "description": "切换LE Audio/经典蓝牙音频" },
+        { "opCode": "0x02", "name": "SET_CODEC", "description": "设置编解码器 (SBC/mSBC/LC3/MP3)" },
+        { "opCode": "0x03", "name": "SET_LC3_PARAMS", "description": "设置LC3参数 (采样率/帧长/比特率)" },
+        { "opCode": "0x04", "name": "START_AURACAST", "description": "启动Auracast广播" },
+        { "opCode": "0x05", "name": "STOP_AURACAST", "description": "停止Auracast广播" },
+        { "opCode": "0x06", "name": "GET_AURACAST_STATUS", "description": "获取Auracast状态" },
+        { "opCode": "0x07", "name": "SET_BROADCAST_QOS", "description": "设置广播QoS参数 (BIG/CIS)" }
+      ]
+    },
+    {
+      "groupName": "电池管理",
+      "categoryId": "0x05",
+      "commands": [
+        { "opCode": "0x01", "name": "GET_BATTERY_LEVEL", "description": "获取电池电量" },
+        { "opCode": "0x02", "name": "GET_BATTERY_VOLTAGE", "description": "获取电池电压" },
+        { "opCode": "0x03", "name": "GET_CHARGE_STATUS", "description": "获取充电状态" },
+        { "opCode": "0x04", "name": "GET_BATTERY_TEMP", "description": "获取电池温度" },
+        { "opCode": "0x05", "name": "SET_CHARGE_CURRENT", "description": "设置充电电流 (max 400mA)" }
+      ]
+    },
+    {
+      "groupName": "EQ均衡器",
+      "categoryId": "0x08",
+      "commands": [
+        { "opCode": "0x01", "name": "GET_EQ_BANDS", "description": "获取EQ频段数 (5-band/20-band)" },
+        { "opCode": "0x02", "name": "SET_EQ_BAND", "description": "设置单段EQ (频率/增益/Q值)" },
+        { "opCode": "0x03", "name": "SET_EQ_PRESET", "description": "设置EQ预设 (流行/古典/摇滚/人声)" },
+        { "opCode": "0x04", "name": "SET_DRC", "description": "设置动态范围压缩 (DRC)" },
+        { "opCode": "0x05", "name": "SET_AGC", "description": "设置自动增益控制 (AGC)" },
+        { "opCode": "0x06", "name": "SET_PEQ", "description": "设置参数均衡器 (20 Bands PEQ)" }
+      ]
+    },
+    {
+      "groupName": "触摸/按键控制",
+      "categoryId": "0x09",
+      "commands": [
+        { "opCode": "0x01", "name": "SET_TOUCH_SENSITIVITY", "description": "设置触摸灵敏度" },
+        { "opCode": "0x02", "name": "SET_TOUCH_GESTURE", "description": "设置手势映射" },
+        { "opCode": "0x03", "name": "GET_TOUCH_STATUS", "description": "获取触摸状态" },
+        { "opCode": "0x04", "name": "SET_LED_MODE", "description": "设置LED指示灯模式" }
+      ]
+    }
+  ],
+  "registers": [
+    { "address": "0x0000", "name": "CHIP_ID", "type": "ro", "width": 32, "description": "芯片ID" },
+    { "address": "0x0004", "name": "CHIP_REV", "type": "ro", "width": 32, "description": "芯片版本" },
+    { "address": "0x0008", "name": "BT_ADDR", "type": "ro", "width": 48, "description": "蓝牙MAC地址" },
+    { "address": "0x0010", "name": "CPU_FREQ", "type": "ro", "width": 32, "description": "CPU频率 (100MHz max)" },
+    { "address": "0x0014", "name": "CPU_LOAD", "type": "ro", "width": 8, "description": "CPU使用率" },
+    { "address": "0x0018", "name": "DSP_FREQ", "type": "ro", "width": 32, "description": "DSP频率" },
+    { "address": "0x001C", "name": "DSP_LOAD", "type": "ro", "width": 8, "description": "DSP使用率" },
+    { "address": "0x0020", "name": "ROM_SIZE", "type": "ro", "width": 32, "description": "ROM大小 (768KB)" },
+    { "address": "0x0024", "name": "RAM_SIZE", "type": "ro", "width": 32, "description": "RAM大小" },
+    { "address": "0x0028", "name": "FLASH_SIZE", "type": "ro", "width": 32, "description": "Flash大小 (8Mbits/4MB)" },
+    { "address": "0x0030", "name": "BAT_VOLTAGE", "type": "ro", "width": 16, "description": "电池电压 (mV)" },
+    { "address": "0x0032", "name": "BAT_LEVEL", "type": "ro", "width": 8, "description": "电池电量 (%)" },
+    { "address": "0x0033", "name": "BAT_CHARGING", "type": "ro", "width": 8, "description": "充电状态" },
+    { "address": "0x0034", "name": "BAT_TEMP", "type": "ro", "width": 16, "description": "电池温度" },
+    { "address": "0x0040", "name": "VOLUME", "type": "rw", "width": 8, "description": "音量 (0-16)" },
+    { "address": "0x0041", "name": "MUTE", "type": "rw", "width": 8, "description": "静音" },
+    { "address": "0x0050", "name": "ANC_MODE", "type": "rw", "width": 8, "description": "ANC模式" },
+    { "address": "0x0051", "name": "ANC_STRENGTH", "type": "rw", "width": 8, "description": "ANC强度" },
+    { "address": "0x0060", "name": "CODEC_TYPE", "type": "rw", "width": 8, "description": "编解码类型 (SBC/mSBC/LC3/MP3)" },
+    { "address": "0x0061", "name": "SAMPLE_RATE", "type": "rw", "width": 32, "description": "采样率 (8/16/32/44.1/48/96kHz)" },
+    { "address": "0x0062", "name": "DAC_SNR", "type": "ro", "width": 16, "description": "DAC信噪比 (102/108/113dBA)" },
+    { "address": "0x0064", "name": "ADC_SNR", "type": "ro", "width": 16, "description": "ADC信噪比 (97/112dBA)" },
+    { "address": "0x0070", "name": "TX_POWER", "type": "rw", "width": 8, "description": "发射功率 (dBm, max 10)" },
+    { "address": "0x0071", "name": "RX_SENSITIVITY", "type": "ro", "width": 16, "description": "接收灵敏度 (dBm)" },
+    { "address": "0x0080", "name": "LE_AUDIO_EN", "type": "rw", "width": 8, "description": "LE Audio使能" },
+    { "address": "0x0081", "name": "AURACAST_EN", "type": "rw", "width": 8, "description": "Auracast使能" },
+    { "address": "0x0090", "name": "SECURITY_KEY", "type": "wo", "width": 256, "description": "AES-256密钥 (安全引擎)" }
+  ],
+  "atCommands": [
+    { "command": "AT+VERSION?", "description": "查询固件版本" },
+    { "command": "AT+BTADDR?", "description": "查询蓝牙MAC地址" },
+    { "command": "AT+BTNAME?", "description": "查询蓝牙名称" },
+    { "command": "AT+BTNAME=<name>", "description": "设置蓝牙名称" },
+    { "command": "AT+BATT?", "description": "查询电池信息" },
+    { "command": "AT+VOL?", "description": "查询音量" },
+    { "command": "AT+VOL=<0-16>", "description": "设置音量" },
+    { "command": "AT+ANC=<mode>", "description": "设置降噪模式 (0=OFF,1=ANC,2=透明)" },
+    { "command": "AT+ANCG=<strength>", "description": "设置降噪强度 (0=弱,1=中,2=强)" },
+    { "command": "AT+EQ=<preset>", "description": "设置EQ预设" },
+    { "command": "AT+CODEC=<type>", "description": "设置编解码器 (SBC/mSBC/LC3/MP3)" },
+    { "command": "AT+LEAUDIO=<0|1>", "description": "使能/禁用LE Audio" },
+    { "command": "AT+AURACAST=<0|1>", "description": "启动/停止Auracast" },
+    { "command": "AT+DUT", "description": "进入DUT测试模式" },
+    { "command": "AT+OTA", "description": "进入OTA升级模式" },
+    { "command": "AT+RESET", "description": "重启设备" }
+  ],
+  "deviceMatching": {
+    "namePrefixes": ["Realtek", "RTL87", "RTL8773", "Smart Glasses", "AI Glasses"],
+    "manufacturerDataContains": "Realtek",
+    "serviceUuids": ["0000abf0-0000-1000-8000-00805f9b34fb"]
+  }
+}

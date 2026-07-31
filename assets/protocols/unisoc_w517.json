@@ -1,0 +1,621 @@
+{
+  "id": "unisoc_w517",
+  "name": "紫光展锐 W517 AI智能眼镜 BLE协议",
+  "vendor": {
+    "vendorName": "UNISOC (紫光展锐)",
+    "chipSeries": "W517 系列 (4G AI智能穿戴平台)",
+    "protocolVersion": "v1.0",
+    "website": "https://www.unisoc.com",
+    "description": "紫光展锐 W517 是旗舰级4G AI智能穿戴平台，采用12nm工艺，四核CPU(1×A75@2.0GHz + 3×A55@1.8GHz)，内置IMG8300 GPU@800MHz。支持蓝牙5.0双模、WiFi 802.11b/g/n/ac、4G LTE Cat4全网通。运行Android 13.0系统，面向AI拍照眼镜、AR显示眼镜等。芯片内置展锐AI单麦智能降噪、AI视频防抖、AI人脸识别技术。由于运行完整Android系统，BLE通信通常通过标准GATT接口暴露能力，使用JSON-RPC或Protobuf格式封装。"
+  },
+  "services": [
+    {
+      "name": "Generic Access (标准)",
+      "uuid": "00001800-0000-1000-8000-00805f9b34fb",
+      "description": "蓝牙标准 GAP 服务",
+      "characteristics": [
+        {
+          "name": "Device Name",
+          "uuid": "00002a00-0000-1000-8000-00805f9b34fb",
+          "direction": "read",
+          "description": "设备名称"
+        },
+        {
+          "name": "Appearance",
+          "uuid": "00002a01-0000-1000-8000-00805f9b34fb",
+          "direction": "read",
+          "description": "外观 (0x0542 = 智能眼镜)"
+        }
+      ]
+    },
+    {
+      "name": "Device Information (标准)",
+      "uuid": "0000180a-0000-1000-8000-00805f9b34fb",
+      "description": "设备信息服务",
+      "characteristics": [
+        {
+          "name": "Manufacturer Name",
+          "uuid": "00002a29-0000-1000-8000-00805f9b34fb",
+          "direction": "read",
+          "description": "厂商名称字符串"
+        },
+        {
+          "name": "Model Number",
+          "uuid": "00002a24-0000-1000-8000-00805f9b34fb",
+          "direction": "read",
+          "description": "型号编号"
+        },
+        {
+          "name": "Firmware Revision",
+          "uuid": "00002a26-0000-1000-8000-00805f9b34fb",
+          "direction": "read",
+          "description": "固件版本"
+        },
+        {
+          "name": "Hardware Revision",
+          "uuid": "00002a27-0000-1000-8000-00805f9b34fb",
+          "direction": "read",
+          "description": "硬件版本"
+        },
+        {
+          "name": "Software Revision",
+          "uuid": "00002a28-0000-1000-8000-00805f9b34fb",
+          "direction": "read",
+          "description": "软件版本"
+        },
+        {
+          "name": "System ID",
+          "uuid": "00002a23-0000-1000-8000-00805f9b34fb",
+          "direction": "read",
+          "description": "系统ID"
+        }
+      ]
+    },
+    {
+      "name": "Battery Service (标准)",
+      "uuid": "0000180f-0000-1000-8000-00805f9b34fb",
+      "description": "标准电池服务",
+      "characteristics": [
+        {
+          "name": "Battery Level",
+          "uuid": "00002a19-0000-1000-8000-00805f9b34fb",
+          "direction": "notify",
+          "description": "电池电量百分比 (0-100)",
+          "notifyPayloadFormat": "uint8:percent"
+        }
+      ]
+    },
+    {
+      "name": "UNISOC Smart Glasses Service",
+      "uuid": "f0001110-0451-4000-b000-000000000000",
+      "description": "展锐智能眼镜自定义服务，承载AI眼镜全部控制与数据通道",
+      "characteristics": [
+        {
+          "name": "Command TX (手机→眼镜)",
+          "uuid": "f0001111-0451-4000-b000-000000000000",
+          "direction": "write",
+          "writePayloadFormat": "frame:unisoc_cmd",
+          "description": "JSON-RPC命令写入通道"
+        },
+        {
+          "name": "Response/Event RX (眼镜→手机)",
+          "uuid": "f0001112-0451-4000-b000-000000000000",
+          "direction": "notify",
+          "notifyPayloadFormat": "frame:unisoc_cmd",
+          "description": "JSON-RPC响应与事件通知通道"
+        },
+        {
+          "name": "File Transfer Channel",
+          "uuid": "f0001113-0451-4000-b000-000000000000",
+          "direction": "write_notify",
+          "writePayloadFormat": "frame:unisoc_file",
+          "notifyPayloadFormat": "frame:unisoc_file",
+          "description": "大文件传输通道 (照片/视频/OTA固件)"
+        }
+      ]
+    },
+    {
+      "name": "UNISOC Camera Service",
+      "uuid": "f0001120-0451-4000-b000-000000000000",
+      "description": "摄像头控制服务 (W517支持13MP/16MP拍照+1080P@30fps录制)",
+      "characteristics": [
+        {
+          "name": "Camera Control",
+          "uuid": "f0001121-0451-4000-b000-000000000000",
+          "direction": "write",
+          "writePayloadFormat": "frame:unisoc_cmd",
+          "description": "拍照/录像/切换模式"
+        },
+        {
+          "name": "Camera Status",
+          "uuid": "f0001122-0451-4000-b000-000000000000",
+          "direction": "notify",
+          "notifyPayloadFormat": "frame:unisoc_cmd",
+          "description": "摄像头状态通知 (拍照完成/录像状态/错误)"
+        },
+        {
+          "name": "Thumbnail Preview",
+          "uuid": "f0001123-0451-4000-b000-000000000000",
+          "direction": "notify",
+          "notifyPayloadFormat": "frame:unisoc_file",
+          "description": "缩略图预览数据流"
+        }
+      ]
+    },
+    {
+      "name": "UNISOC Sensor Service",
+      "uuid": "f0001130-0451-4000-b000-000000000000",
+      "description": "传感器数据服务 (9轴IMU + 气压计 + 光距传感器)",
+      "characteristics": [
+        {
+          "name": "IMU Data",
+          "uuid": "f0001131-0451-4000-b000-000000000000",
+          "direction": "notify",
+          "notifyPayloadFormat": "raw:imu_stream",
+          "description": "9轴传感器数据流 (陀螺仪+加速度+磁力计, 20Hz/50Hz/100Hz)"
+        },
+        {
+          "name": "Environmental Data",
+          "uuid": "f0001132-0451-4000-b000-000000000000",
+          "direction": "notify",
+          "notifyPayloadFormat": "raw:env_stream",
+          "description": "气压 + 温度 + 光距传感器"
+        },
+        {
+          "name": "Sensor Config",
+          "uuid": "f0001133-0451-4000-b000-000000000000",
+          "direction": "write",
+          "writePayloadFormat": "frame:unisoc_cmd",
+          "description": "采样率/量程/使能配置"
+        }
+      ]
+    },
+    {
+      "name": "UNISOC AI Service",
+      "uuid": "f0001140-0451-4000-b000-000000000000",
+      "description": "AI推理服务 (接入文心一言/通义千问/ChatGPT等大模型)",
+      "characteristics": [
+        {
+          "name": "AI Request",
+          "uuid": "f0001141-0451-4000-b000-000000000000",
+          "direction": "write",
+          "writePayloadFormat": "frame:unisoc_cmd",
+          "description": "AI请求 (语音识别/翻译/图像识别/导航)"
+        },
+        {
+          "name": "AI Response",
+          "uuid": "f0001142-0451-4000-b000-000000000000",
+          "direction": "notify",
+          "notifyPayloadFormat": "frame:unisoc_cmd",
+          "description": "AI响应数据流"
+        }
+      ]
+    }
+  ],
+  "frameFormats": [
+    {
+      "name": "unisoc_cmd",
+      "description": "展锐 JSON-RPC 命令帧。Android系统层使用JSON-RPC over BLE封装应用层命令",
+      "endian": "little",
+      "fields": [
+        {
+          "name": "start",
+          "encoding": "hex",
+          "byteLength": 1,
+          "value": "0xF1",
+          "description": "帧头标识"
+        },
+        {
+          "name": "msgId",
+          "encoding": "uint8",
+          "byteLength": 1,
+          "description": "消息ID，用于匹配请求-响应对"
+        },
+        {
+          "name": "type",
+          "encoding": "uint8",
+          "byteLength": 1,
+          "description": "消息类型",
+          "enumMap": {
+            "0": "REQUEST",
+            "1": "RESPONSE",
+            "2": "NOTIFY",
+            "3": "ERROR"
+          }
+        },
+        {
+          "name": "module",
+          "encoding": "uint8",
+          "byteLength": 1,
+          "description": "功能模块",
+          "enumMap": {
+            "0x01": "SYSTEM",
+            "0x02": "CAMERA",
+            "0x03": "AUDIO",
+            "0x04": "DISPLAY",
+            "0x05": "SENSOR",
+            "0x06": "AI",
+            "0x07": "NETWORK",
+            "0x08": "OTA",
+            "0x09": "FILE",
+            "0x0A": "POWER"
+          }
+        },
+        {
+          "name": "cmdId",
+          "encoding": "uint16",
+          "byteLength": 2,
+          "endian": "little",
+          "description": "命令ID"
+        },
+        {
+          "name": "payloadLen",
+          "encoding": "uint16",
+          "byteLength": 2,
+          "endian": "little",
+          "description": "payload字节数"
+        },
+        {
+          "name": "payload",
+          "encoding": "bytes",
+          "byteLength": 0,
+          "lengthSource": "payloadLen",
+          "description": "JSON字符串payload (UTF-8编码)"
+        },
+        {
+          "name": "crc16",
+          "encoding": "uint16",
+          "byteLength": 2,
+          "endian": "little",
+          "description": "CRC-16/CCITT 校验 (从start到payload末尾)"
+        },
+        {
+          "name": "end",
+          "encoding": "hex",
+          "byteLength": 1,
+          "value": "0xF2",
+          "description": "帧尾标识"
+        }
+      ],
+      "checksum": {
+        "type": "crc16_ccitt",
+        "startField": "start",
+        "endField": "payload"
+      }
+    },
+    {
+      "name": "unisoc_file",
+      "description": "文件分块传输帧 (照片/视频/OTA固件)",
+      "endian": "little",
+      "fields": [
+        {
+          "name": "start",
+          "encoding": "hex",
+          "byteLength": 1,
+          "value": "0xF5"
+        },
+        {
+          "name": "fileId",
+          "encoding": "uint8",
+          "byteLength": 1,
+          "description": "文件会话ID"
+        },
+        {
+          "name": "blockIndex",
+          "encoding": "uint16",
+          "byteLength": 2,
+          "endian": "little",
+          "description": "分块序号 (0-based)"
+        },
+        {
+          "name": "totalBlocks",
+          "encoding": "uint16",
+          "byteLength": 2,
+          "endian": "little",
+          "description": "总分块数"
+        },
+        {
+          "name": "dataLen",
+          "encoding": "uint16",
+          "byteLength": 2,
+          "endian": "little",
+          "description": "本块数据长度 (≤180字节以适配BLE MTU)"
+        },
+        {
+          "name": "data",
+          "encoding": "bytes",
+          "byteLength": 0,
+          "lengthSource": "dataLen",
+          "description": "文件分块数据"
+        },
+        {
+          "name": "crc16",
+          "encoding": "uint16",
+          "byteLength": 2,
+          "endian": "little",
+          "description": "CRC-16/CCITT"
+        },
+        {
+          "name": "end",
+          "encoding": "hex",
+          "byteLength": 1,
+          "value": "0xF6"
+        }
+      ],
+      "checksum": {
+        "type": "crc16_ccitt",
+        "startField": "start",
+        "endField": "data"
+      }
+    },
+    {
+      "name": "imu_stream",
+      "description": "IMU数据流帧 (9轴传感器，高频率推送)",
+      "endian": "little",
+      "fields": [
+        {
+          "name": "start",
+          "encoding": "hex",
+          "byteLength": 1,
+          "value": "0x55"
+        },
+        {
+          "name": "timestamp",
+          "encoding": "uint32",
+          "byteLength": 4,
+          "endian": "little",
+          "description": "时间戳 (ms)"
+        },
+        {
+          "name": "accX",
+          "encoding": "uint16",
+          "byteLength": 2,
+          "endian": "little",
+          "description": "加速度X (mg, int16)"
+        },
+        {
+          "name": "accY",
+          "encoding": "uint16",
+          "byteLength": 2,
+          "endian": "little",
+          "description": "加速度Y (mg)"
+        },
+        {
+          "name": "accZ",
+          "encoding": "uint16",
+          "byteLength": 2,
+          "endian": "little",
+          "description": "加速度Z (mg)"
+        },
+        {
+          "name": "gyroX",
+          "encoding": "uint16",
+          "byteLength": 2,
+          "endian": "little",
+          "description": "陀螺仪X (0.1°/s, int16)"
+        },
+        {
+          "name": "gyroY",
+          "encoding": "uint16",
+          "byteLength": 2,
+          "endian": "little",
+          "description": "陀螺仪Y (0.1°/s)"
+        },
+        {
+          "name": "gyroZ",
+          "encoding": "uint16",
+          "byteLength": 2,
+          "endian": "little",
+          "description": "陀螺仪Z (0.1°/s)"
+        },
+        {
+          "name": "magX",
+          "encoding": "uint16",
+          "byteLength": 2,
+          "endian": "little",
+          "description": "磁力计X (0.1μT)"
+        },
+        {
+          "name": "magY",
+          "encoding": "uint16",
+          "byteLength": 2,
+          "endian": "little",
+          "description": "磁力计Y (0.1μT)"
+        },
+        {
+          "name": "magZ",
+          "encoding": "uint16",
+          "byteLength": 2,
+          "endian": "little",
+          "description": "磁力计Z (0.1μT)"
+        }
+      ],
+      "checksum": {
+        "type": "sum8",
+        "startField": "start",
+        "endField": "magZ"
+      }
+    }
+  ],
+  "commands": [
+    {
+      "groupName": "系统控制",
+      "moduleId": "0x01",
+      "commands": [
+        { "opCode": "0x0001", "name": "GET_DEVICE_INFO", "description": "获取设备信息 (型号/CPU/内存/存储/系统版本)" },
+        { "opCode": "0x0002", "name": "GET_BATTERY_INFO", "description": "获取电池信息 (电量/电压/充电状态/温度)" },
+        { "opCode": "0x0003", "name": "GET_NETWORK_STATUS", "description": "获取网络状态 (4G信号/WiFi状态/IP地址)" },
+        { "opCode": "0x0004", "name": "SET_DEVICE_TIME", "description": "同步设备时间 (NTP时间戳)" },
+        { "opCode": "0x0005", "name": "GET_STORAGE_INFO", "description": "获取存储信息 (总空间/可用空间)" },
+        { "opCode": "0x0006", "name": "SET_AIRPLANE_MODE", "description": "设置飞行模式" },
+        { "opCode": "0x0007", "name": "REBOOT_DEVICE", "description": "重启设备" },
+        { "opCode": "0x0008", "name": "FACTORY_RESET", "description": "恢复出厂设置" },
+        { "opCode": "0x0009", "name": "GET_BLUETOOTH_INFO", "description": "获取蓝牙信息 (MAC/名称/配对列表)" }
+      ]
+    },
+    {
+      "groupName": "摄像头控制 (Camera - 13MP/16MP)",
+      "moduleId": "0x02",
+      "commands": [
+        { "opCode": "0x0101", "name": "TAKE_PHOTO", "description": "拍照 (单张/连拍/定时)" },
+        { "opCode": "0x0102", "name": "START_RECORDING", "description": "开始录像 (1080P@30fps)" },
+        { "opCode": "0x0103", "name": "STOP_RECORDING", "description": "停止录像" },
+        { "opCode": "0x0104", "name": "GET_CAMERA_STATUS", "description": "获取摄像头状态" },
+        { "opCode": "0x0105", "name": "SET_RESOLUTION", "description": "设置拍照分辨率 (13MP/8MP/5MP)" },
+        { "opCode": "0x0106", "name": "SET_VIDEO_QUALITY", "description": "设置录像质量 (1080P/720P)" },
+        { "opCode": "0x0107", "name": "SET_AI_EIS", "description": "设置AI电子防抖 (开/关/模式)" },
+        { "opCode": "0x0108", "name": "SET_AI_FACE_DETECT", "description": "设置AI人脸检测" },
+        { "opCode": "0x0109", "name": "GET_PHOTO_LIST", "description": "获取照片列表" },
+        { "opCode": "0x010A", "name": "GET_VIDEO_LIST", "description": "获取视频列表" },
+        { "opCode": "0x010B", "name": "TRANSFER_PHOTO", "description": "传输照片到手机" },
+        { "opCode": "0x010C", "name": "DELETE_PHOTO", "description": "删除照片" }
+      ]
+    },
+    {
+      "groupName": "音频控制 (Audio - AI降噪)",
+      "moduleId": "0x03",
+      "commands": [
+        { "opCode": "0x0201", "name": "SET_VOLUME", "description": "设置音量 (0-15)" },
+        { "opCode": "0x0202", "name": "PLAY_AUDIO", "description": "播放音频文件" },
+        { "opCode": "0x0203", "name": "STOP_AUDIO", "description": "停止播放" },
+        { "opCode": "0x0204", "name": "SET_AI_NOISE_REDUCTION", "description": "设置AI智能降噪 (ANC/ENC/DSP模式)" },
+        { "opCode": "0x0205", "name": "START_VOICE_RECOGNITION", "description": "启动语音识别" },
+        { "opCode": "0x0206", "name": "STOP_VOICE_RECOGNITION", "description": "停止语音识别" },
+        { "opCode": "0x0207", "name": "SET_MIC_MODE", "description": "设置麦克风模式 (单麦/双麦/降噪)" },
+        { "opCode": "0x0208", "name": "GET_AUDIO_EQ", "description": "获取EQ设置" },
+        { "opCode": "0x0209", "name": "SET_AUDIO_EQ", "description": "设置EQ (预设/自定义)" }
+      ]
+    },
+    {
+      "groupName": "显示控制 (Display - Micro OLED)",
+      "moduleId": "0x04",
+      "commands": [
+        { "opCode": "0x0301", "name": "SET_DISPLAY_BRIGHTNESS", "description": "设置显示亮度" },
+        { "opCode": "0x0302", "name": "SET_DISPLAY_ONOFF", "description": "显示屏开/关" },
+        { "opCode": "0x0303", "name": "PUSH_NOTIFICATION", "description": "推送通知到眼镜显示" },
+        { "opCode": "0x0304", "name": "PUSH_NAVIGATION", "description": "推送导航信息到显示" },
+        { "opCode": "0x0305", "name": "PUSH_TRANSLATION", "description": "推送翻译结果到显示" },
+        { "opCode": "0x0306", "name": "CLEAR_DISPLAY", "description": "清除显示内容" }
+      ]
+    },
+    {
+      "groupName": "传感器控制 (9轴IMU + 气压 + 光距)",
+      "moduleId": "0x05",
+      "commands": [
+        { "opCode": "0x0401", "name": "START_IMU_STREAM", "description": "启动IMU数据流 (参数: 采样率/量程)" },
+        { "opCode": "0x0402", "name": "STOP_IMU_STREAM", "description": "停止IMU数据流" },
+        { "opCode": "0x0403", "name": "GET_IMU_DATA", "description": "读取当前IMU数据" },
+        { "opCode": "0x0404", "name": "START_ENV_STREAM", "description": "启动环境传感器数据流 (气压/温度/光距)" },
+        { "opCode": "0x0405", "name": "STOP_ENV_STREAM", "description": "停止环境传感器" },
+        { "opCode": "0x0406", "name": "SET_IMU_CALIBRATION", "description": "IMU校准 (陀螺仪/加速度/磁力计)" },
+        { "opCode": "0x0407", "name": "GET_CALIBRATION_STATUS", "description": "获取校准状态" }
+      ]
+    },
+    {
+      "groupName": "AI功能 (接入大模型)",
+      "moduleId": "0x06",
+      "commands": [
+        { "opCode": "0x0501", "name": "AI_TRANSLATE", "description": "实时翻译 (参数: 源语言/目标语言)" },
+        { "opCode": "0x0502", "name": "AI_OBJECT_RECOGNITION", "description": "物体识别" },
+        { "opCode": "0x0503", "name": "AI_TEXT_RECOGNITION", "description": "文字识别 (OCR)" },
+        { "opCode": "0x0504", "name": "AI_NAVIGATION", "description": "智能导航 (GPS+视觉)" },
+        { "opCode": "0x0505", "name": "AI_VOICE_ASSISTANT", "description": "语音助手 (文心/通义/ChatGPT)" },
+        { "opCode": "0x0506", "name": "AI_QR_SCAN", "description": "二维码扫描" },
+        { "opCode": "0x0507", "name": "AI_MATH_SOLVE", "description": "数学题解答" },
+        { "opCode": "0x0508", "name": "AI_SET_MODEL", "description": "切换AI大模型提供商" }
+      ]
+    },
+    {
+      "groupName": "网络通信 (4G/WiFi)",
+      "moduleId": "0x07",
+      "commands": [
+        { "opCode": "0x0601", "name": "GET_4G_SIGNAL", "description": "获取4G信号强度" },
+        { "opCode": "0x0602", "name": "GET_WIFI_LIST", "description": "扫描WiFi网络" },
+        { "opCode": "0x0603", "name": "WIFI_CONNECT", "description": "连接WiFi" },
+        { "opCode": "0x0604", "name": "WIFI_DISCONNECT", "description": "断开WiFi" },
+        { "opCode": "0x0605", "name": "GET_LOCATION", "description": "获取GPS/北斗定位" },
+        { "opCode": "0x0606", "name": "START_TRACKING", "description": "开始运动轨迹记录" },
+        { "opCode": "0x0607", "name": "STOP_TRACKING", "description": "停止运动轨迹" }
+      ]
+    },
+    {
+      "groupName": "OTA升级",
+      "moduleId": "0x08",
+      "commands": [
+        { "opCode": "0x0701", "name": "CHECK_OTA_UPDATE", "description": "检查OTA更新" },
+        { "opCode": "0x0702", "name": "START_OTA", "description": "开始OTA升级" },
+        { "opCode": "0x0703", "name": "GET_OTA_PROGRESS", "description": "获取OTA进度" },
+        { "opCode": "0x0704", "name": "CANCEL_OTA", "description": "取消OTA升级" },
+        { "opCode": "0x0705", "name": "GET_VERSION_HISTORY", "description": "获取版本历史" }
+      ]
+    },
+    {
+      "groupName": "电源管理",
+      "moduleId": "0x0A",
+      "commands": [
+        { "opCode": "0x0901", "name": "SET_POWER_MODE", "description": "设置电源模式 (性能/平衡/省电)" },
+        { "opCode": "0x0902", "name": "SET_SLEEP_TIMEOUT", "description": "设置自动休眠时间" },
+        { "opCode": "0x0903", "name": "GET_POWER_CONSUMPTION", "description": "获取功耗统计" },
+        { "opCode": "0x0904", "name": "SET_WAKEUP_GESTURE", "description": "设置唤醒手势" }
+      ]
+    }
+  ],
+  "registers": [
+    { "address": "0x0000", "name": "CHIP_ID", "type": "ro", "width": 32, "description": "芯片ID (W517)" },
+    { "address": "0x0004", "name": "CHIP_REVISION", "type": "ro", "width": 32, "description": "芯片版本号" },
+    { "address": "0x0008", "name": "BOOT_MODE", "type": "ro", "width": 8, "description": "启动模式 (Normal/Recovery/Flash)" },
+    { "address": "0x0010", "name": "CPU_FREQ", "type": "rw", "width": 32, "description": "CPU频率 (Hz)" },
+    { "address": "0x0014", "name": "CPU_LOAD", "type": "ro", "width": 8, "description": "CPU使用率 (%)" },
+    { "address": "0x0018", "name": "GPU_FREQ", "type": "rw", "width": 32, "description": "GPU频率 (Hz)" },
+    { "address": "0x001C", "name": "GPU_LOAD", "type": "ro", "width": 8, "description": "GPU使用率 (%)" },
+    { "address": "0x0020", "name": "RAM_TOTAL", "type": "ro", "width": 32, "description": "总内存 (MB)" },
+    { "address": "0x0024", "name": "RAM_FREE", "type": "ro", "width": 32, "description": "可用内存 (MB)" },
+    { "address": "0x0028", "name": "FLASH_TOTAL", "type": "ro", "width": 32, "description": "总存储 (MB)" },
+    { "address": "0x002C", "name": "FLASH_FREE", "type": "ro", "width": 32, "description": "可用存储 (MB)" },
+    { "address": "0x0030", "name": "BATTERY_VOLTAGE", "type": "ro", "width": 16, "description": "电池电压 (mV)" },
+    { "address": "0x0032", "name": "BATTERY_LEVEL", "type": "ro", "width": 8, "description": "电池电量 (%)" },
+    { "address": "0x0033", "name": "CHARGE_STATUS", "type": "ro", "width": 8, "description": "充电状态 (0=未充电, 1=充电中, 2=已充满)" },
+    { "address": "0x0034", "name": "TEMPERATURE", "type": "ro", "width": 16, "description": "芯片温度 (0.1°C)" },
+    { "address": "0x0038", "name": "LTE_RSRP", "type": "ro", "width": 16, "description": "4G信号强度 (dBm)" },
+    { "address": "0x003A", "name": "WIFI_RSSI", "type": "ro", "width": 16, "description": "WiFi信号强度 (dBm)" },
+    { "address": "0x0040", "name": "CAMERA_RESOLUTION", "type": "rw", "width": 8, "description": "摄像头分辨率档位" },
+    { "address": "0x0041", "name": "CAMERA_FPS", "type": "rw", "width": 8, "description": "录像帧率" },
+    { "address": "0x0042", "name": "EIS_ENABLE", "type": "rw", "width": 8, "description": "AI电子防抖使能" },
+    { "address": "0x0050", "name": "DISPLAY_BRIGHTNESS", "type": "rw", "width": 8, "description": "显示亮度 (0-255)" },
+    { "address": "0x0051", "name": "DISPLAY_ONOFF", "type": "rw", "width": 8, "description": "显示开关" },
+    { "address": "0x0060", "name": "VOLUME", "type": "rw", "width": 8, "description": "音量 (0-15)" },
+    { "address": "0x0061", "name": "MIC_GAIN", "type": "rw", "width": 8, "description": "麦克风增益" },
+    { "address": "0x0070", "name": "IMU_SAMPLE_RATE", "type": "rw", "width": 16, "description": "IMU采样率 (Hz)" },
+    { "address": "0x0072", "name": "IMU_ACC_RANGE", "type": "rw", "width": 8, "description": "加速度量程 (±2/4/8/16g)" },
+    { "address": "0x0073", "name": "IMU_GYRO_RANGE", "type": "rw", "width": 8, "description": "陀螺仪量程 (±250/500/1000/2000°/s)" },
+    { "address": "0x0080", "name": "POWER_MODE", "type": "rw", "width": 8, "description": "电源模式 (0=性能, 1=平衡, 2=省电)" },
+    { "address": "0x0081", "name": "SLEEP_TIMEOUT", "type": "rw", "width": 32, "description": "自动休眠超时 (秒)" }
+  ],
+  "atCommands": [
+    { "command": "AT+DEVICE?", "description": "查询设备型号和序列号" },
+    { "command": "AT+VERSION?", "description": "查询固件版本" },
+    { "command": "AT+BATTERY?", "description": "查询电池信息" },
+    { "command": "AT+SIGNAL?", "description": "查询4G/WiFi信号强度" },
+    { "command": "AT+GPS?", "description": "查询GPS/北斗定位信息" },
+    { "command": "AT+WIFI=<ssid>,<password>", "description": "连接WiFi网络" },
+    { "command": "AT+WIFIOFF", "description": "断开WiFi" },
+    { "command": "AT+BTON", "description": "打开蓝牙可发现模式" },
+    { "command": "AT+BTOFF", "description": "关闭蓝牙" },
+    { "command": "AT+CAM=<mode>", "description": "控制摄像头 (photo/video/stop)" },
+    { "command": "AT+RES=<width>x<height>", "description": "设置拍照分辨率" },
+    { "command": "AT+VOL=<level>", "description": "设置音量 (0-15)" },
+    { "command": "AT+AION", "description": "开启AI降噪" },
+    { "command": "AT+AIOFF", "description": "关闭AI降噪" },
+    { "command": "AT+TRANS=<src>,<dst>", "description": "启动实时翻译 (源语言→目标语言)" },
+    { "command": "AT+OTA=<url>", "description": "从URL启动OTA升级" },
+    { "command": "AT+REBOOT", "description": "重启设备" },
+    { "command": "AT+RESET", "description": "恢复出厂设置" },
+    { "command": "AT+IMEI?", "description": "查询IMEI号" },
+    { "command": "AT+TIME=<timestamp>", "description": "同步系统时间" }
+  ],
+  "deviceMatching": {
+    "namePrefixes": ["UNISOC", "W517", "SmartGlasses", "AI Glasses"],
+    "manufacturerDataContains": "UNISOC",
+    "serviceUuids": ["f0001110-0451-4000-b000-000000000000"]
+  }
+}
