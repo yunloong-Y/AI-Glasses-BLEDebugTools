@@ -1,5 +1,6 @@
 import 'dart:async';
 import '../adapter/base_bluetooth.dart';
+import '../adapter/bluetooth_impl.dart';
 import '../plugins/base_plugin.dart';
 
 /// ============================================================
@@ -68,6 +69,3 @@ class DeviceManager {
     await Future.wait(futures);
   }
 }
-
-/// 占位 - StandardBluetoothAdapter import
-import '../adapter/bluetooth_impl.dart';

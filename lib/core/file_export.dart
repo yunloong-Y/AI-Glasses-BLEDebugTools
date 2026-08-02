@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:path_provider/path_provider.dart';
+
 /// ============================================================
 /// 文件持久化模块
 /// 日志、固件、测试报告本地存储
@@ -10,7 +12,7 @@ class FileExporter {
   static Future<String> exportLogFile(String content, String deviceMac) async {
     final dir = await _getExportDir();
     final ts = DateTime.now().toIso8601String().replaceAll(':', '-');
-    final file = File('${dir.path}/aiglasses_bledebugtools_log_${deviceMac}_$ts.log');
+    final file = File('${dir.path}/ble_log_${deviceMac}_$ts.log');
     await file.writeAsString(content);
     return file.path;
   }
@@ -20,7 +22,7 @@ class FileExporter {
       List<int> data, String deviceMac) async {
     final dir = await _getExportDir();
     final ts = DateTime.now().toIso8601String().replaceAll(':', '-');
-    final file = File('${dir.path}/aiglasses_bledebugtools_capture_${deviceMac}_$ts.pcap');
+    final file = File('${dir.path}/ble_capture_${deviceMac}_$ts.pcap');
     await file.writeAsBytes(data);
     return file.path;
   }
@@ -29,15 +31,15 @@ class FileExporter {
   static Future<String> exportTestReport(String csv, String deviceMac) async {
     final dir = await _getExportDir();
     final ts = DateTime.now().toIso8601String().replaceAll(':', '-');
-    final file = File('${dir.path}/aiglasses_bledebugtools_report_${deviceMac}_$ts.csv');
+    final file = File('${dir.path}/ble_report_${deviceMac}_$ts.csv');
     await file.writeAsString(csv);
     return file.path;
   }
 
-  /// 获取导出目录
+  /// 获取导出目录（使用应用文档目录）
   static Future<Directory> _getExportDir() async {
-    // TODO: 使用 path_provider 获取应用文档目录
-    final dir = Directory('/tmp/aiglasses_bledebugtools_exports');
+    final appDir = await getApplicationDocumentsDirectory();
+    final dir = Directory('${appDir.path}/ble_debug_exports');
     if (!dir.existsSync()) {
       dir.createSync(recursive: true);
     }

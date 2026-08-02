@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import '../adapter/base_bluetooth.dart';
 import '../adapter/bluetooth_impl.dart';
 import 'base_plugin.dart';

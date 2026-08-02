@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 import '../adapter/base_bluetooth.dart';
 
 /// ============================================================

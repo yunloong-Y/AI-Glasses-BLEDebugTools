@@ -45,7 +45,7 @@ class ScriptStep {
   final int? repeat; // 循环次数, null = 不循环
   final String? condition; // 条件表达式
 
-  ScriptAction(this.actions, {this.name, this.repeat, this.condition});
+  ScriptStep(this.actions, {this.name, this.repeat, this.condition});
 }
 
 class TestScript {
@@ -54,7 +54,7 @@ class TestScript {
   final List<ScriptStep> steps;
   final Map<String, dynamic> variables;
 
-  ScriptScript({
+  TestScript({
     required this.name,
     required this.description,
     required this.steps,

@@ -53,3 +53,9 @@ ios/Runner/GeneratedPluginRegistrant.*
 # Misc
 *.log
 .env
+
+# WorkBuddy
+.workbuddy/
+
+# Generated
+.metadata
