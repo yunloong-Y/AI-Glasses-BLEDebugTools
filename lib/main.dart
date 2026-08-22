@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'adapter/base_bluetooth.dart';
@@ -20,6 +20,7 @@ import 'ui/ota_page.dart';
 import 'ui/register_debug.dart';
 import 'ui/plugin_manager.dart';
 import 'ui/audio_debug.dart';
+import 'ui/theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -63,6 +64,19 @@ void _registerBuiltinPlugins() {
   reg.register(WqBluetoothPlugin());
 }
 
+/// 设置状态栏样式
+void _setSystemUIStyle(Brightness brightness) {
+  SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness:
+        brightness == Brightness.dark ? Brightness.light : Brightness.dark,
+    systemNavigationBarColor:
+        brightness == Brightness.dark ? AppTheme.darkBg : Colors.white,
+    systemNavigationBarIconBrightness:
+        brightness == Brightness.dark ? Brightness.light : Brightness.dark,
+  ));
+}
+
 class BleDebugApp extends StatelessWidget {
   const BleDebugApp({super.key});
 
@@ -75,19 +89,11 @@ class BleDebugApp extends StatelessWidget {
         Provider<LogParser>.value(value: LogParser()),
       ],
       child: MaterialApp(
-        title: 'AI-Glasses-BLEDebugTools',
+        title: 'BLE Debug Tools',
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-          useMaterial3: true,
-        ),
-        darkTheme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: Colors.blue,
-            brightness: Brightness.dark,
-          ),
-          useMaterial3: true,
-        ),
+        theme: AppTheme.light,
+        darkTheme: AppTheme.dark,
+        themeMode: ThemeMode.system,
         home: const MainPage(),
       ),
     );
@@ -309,28 +315,38 @@ class _MainPageState extends State<MainPage> {
   ];
 
   final labels = [
-    'Scan',
+    '扫描',
     'GATT',
-    'Log',
+    '日志',
     'OTA',
-    'Register',
-    'Audio',
-    'Plugins',
+    '寄存器',
+    '音频',
+    '插件',
   ];
 
   final icons = [
-    Icons.bluetooth_searching,
-    Icons.account_tree,
-    Icons.terminal,
-    Icons.system_update,
-    Icons.memory,
-    Icons.graphic_eq,
-    Icons.extension,
+    Icons.bluetooth_searching_rounded,
+    Icons.account_tree_rounded,
+    Icons.terminal_rounded,
+    Icons.system_update_rounded,
+    Icons.memory_rounded,
+    Icons.graphic_eq_rounded,
+    Icons.extension_rounded,
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _setSystemUIStyle(Theme.of(context).brightness);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final bleState = context.watch<BleState>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,
@@ -340,20 +356,12 @@ class _MainPageState extends State<MainPage> {
         selectedIndex: _currentIndex,
         onDestinationSelected: (i) => setState(() => _currentIndex = i),
         destinations: List.generate(labels.length, (i) {
-          // 在 GATT 标签上显示连接状态指示器
           final isConnected = bleState.connected;
           if (i == 0 && isConnected) {
             return NavigationDestination(
-              icon: Stack(
-                children: [
-                  Icon(icons[i]),
-                  const Positioned(
-                    right: 0,
-                    top: 0,
-                    child: Icon(Icons.circle,
-                        size: 8, color: Colors.green),
-                  ),
-                ],
+              icon: Badge(
+                backgroundColor: AppTheme.iosGreen,
+                child: Icon(icons[i]),
               ),
               label: labels[i],
             );

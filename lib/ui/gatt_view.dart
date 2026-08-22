@@ -1,14 +1,15 @@
 import 'dart:typed_data';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../adapter/base_bluetooth.dart';
 import '../main.dart';
+import 'theme.dart';
 
 /// ============================================================
-/// GATT 服务树面板
-/// 自动解析 Service/Characteristic, 支持读写/通知
+/// GATT 服务树面板 — iOS 风格
 /// ============================================================
 
 class GattView extends StatefulWidget {
@@ -29,95 +30,86 @@ class _GattViewState extends State<GattView> {
     final deviceName = bleState.selectedDevice?.name ?? '未连接';
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(connected ? 'GATT - $deviceName' : 'GATT 服务树'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: connected
-                ? () async {
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar.large(
+            title: Text(connected ? 'GATT' : 'GATT 服务'),
+            actions: [
+              if (connected)
+                IconButton(
+                  icon: const Icon(Icons.refresh_rounded),
+                  onPressed: () async {
                     await bleState.refreshServices();
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text(
-                              '已发现 ${services.length} 个服务'),
-                          backgroundColor: Colors.green,
+                          content: Text('已发现 ${services.length} 个服务'),
+                          backgroundColor: AppTheme.iosGreen,
                         ),
                       );
                     }
-                  }
-                : null,
-          ),
-        ],
-      ),
-      body: !connected
-          ? _buildNotConnected()
-          : services.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const CircularProgressIndicator(),
-                      const SizedBox(height: 16),
-                      Text('正在发现服务...',
-                          style: TextStyle(color: Colors.grey.shade600)),
-                    ],
-                  ),
-                )
-              : ListView.builder(
-                  itemCount: services.length,
-                  itemBuilder: (ctx, i) {
-                    final svc = services[i];
-                    final expanded = _expandedServices.contains(svc.uuid);
-                    return ExpansionTile(
-                      title: Text(
-                        svc.displayName ?? svc.uuid,
-                        style: const TextStyle(fontWeight: FontWeight.w500),
-                      ),
-                      subtitle: Text(
-                        '${svc.characteristics.length} characteristics',
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                      leading: Icon(
-                        _getServiceIcon(svc.uuid),
-                        color: Colors.blue,
-                        size: 20,
-                      ),
-                      initiallyExpanded: expanded,
-                      onExpansionChanged: (v) {
-                        setState(() {
-                          if (v) {
-                            _expandedServices.add(svc.uuid);
-                          } else {
-                            _expandedServices.remove(svc.uuid);
-                          }
-                        });
-                      },
-                      children: svc.characteristics.map((ch) {
-                        return _CharTile(
-                          characteristic: ch,
-                          serviceUuid: svc.uuid,
-                        );
-                      }).toList(),
-                    );
                   },
                 ),
-    );
-  }
-
-  Widget _buildNotConnected() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.account_tree, size: 64, color: Colors.grey.shade400),
-          const SizedBox(height: 16),
-          Text('未发现服务',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 16)),
-          const SizedBox(height: 8),
-          Text('请先在扫描页连接设备',
-              style: TextStyle(color: Colors.grey.shade400, fontSize: 13)),
+            ],
+          ),
+          if (!connected)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: IosEmptyState(
+                icon: Icons.account_tree_rounded,
+                title: '未连接设备',
+                subtitle: '请先在扫描页连接设备',
+              ),
+            )
+          else if (services.isEmpty)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const CupertinoActivityIndicator(radius: 16),
+                    const SizedBox(height: 16),
+                    Text('正在发现服务...',
+                        style:
+                            TextStyle(color: AppTheme.iosGray, fontSize: 15)),
+                  ],
+                ),
+              ),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              sliver: SliverList.builder(
+                itemCount: services.length,
+                itemBuilder: (ctx, i) {
+                  final svc = services[i];
+                  return _ServiceCard(
+                    service: svc,
+                    expanded: _expandedServices.contains(svc.uuid),
+                    onToggle: () {
+                      setState(() {
+                        if (_expandedServices.contains(svc.uuid)) {
+                          _expandedServices.remove(svc.uuid);
+                        } else {
+                          _expandedServices.add(svc.uuid);
+                        }
+                      });
+                    },
+                  );
+                },
+              ),
+            ),
+          if (connected)
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.only(top: 8, bottom: 16),
+                child: Center(
+                  child: Text('',
+                      style: TextStyle(fontSize: 12)),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -125,14 +117,113 @@ class _GattViewState extends State<GattView> {
 
   IconData _getServiceIcon(String uuid) {
     final lower = uuid.toLowerCase();
-    if (lower.contains('180a')) return Icons.info;
-    if (lower.contains('180f')) return Icons.battery_charging_full;
-    if (lower.contains('ff00') || lower.contains('ffe0')) return Icons.settings;
-    return Icons.account_tree;
+    if (lower.contains('180a')) return Icons.info_rounded;
+    if (lower.contains('180f')) return Icons.battery_charging_full_rounded;
+    if (lower.contains('ff00') || lower.contains('ffe0')) return Icons.settings_rounded;
+    return Icons.account_tree_rounded;
   }
 }
 
-/// 单个特征值条目
+/// 服务卡片（可展开）
+class _ServiceCard extends StatelessWidget {
+  final GattService service;
+  final bool expanded;
+  final VoidCallback onToggle;
+
+  const _ServiceCard({
+    required this.service,
+    required this.expanded,
+    required this.onToggle,
+  });
+
+  IconData _getServiceIcon(String uuid) {
+    final lower = uuid.toLowerCase();
+    if (lower.contains('180a')) return Icons.info_rounded;
+    if (lower.contains('180f')) return Icons.battery_charging_full_rounded;
+    if (lower.contains('ff00') || lower.contains('ffe0')) return Icons.settings_rounded;
+    return Icons.account_tree_rounded;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardTheme.color,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          // Header
+          InkWell(
+            onTap: onToggle,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: AppTheme.iosBlue.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(_getServiceIcon(service.uuid),
+                        color: AppTheme.iosBlue, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          service.displayName ?? service.uuid,
+                          style: const TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${service.characteristics.length} 个特征值',
+                          style: TextStyle(
+                              fontSize: 13, color: AppTheme.iosGray),
+                        ),
+                      ],
+                    ),
+                  ),
+                  AnimatedRotation(
+                    turns: expanded ? 0.25 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Icon(Icons.chevron_right_rounded,
+                        color: AppTheme.iosGray3),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Expanded children
+          AnimatedCrossFade(
+            firstChild: const SizedBox.shrink(),
+            secondChild: Column(
+              children: [
+                Divider(height: 1, color: AppTheme.iosGray5),
+                ...service.characteristics.map((ch) => _CharTile(
+                      characteristic: ch,
+                      serviceUuid: service.uuid,
+                    )),
+              ],
+            ),
+            crossFadeState:
+                expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 200),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 特征值条目
 class _CharTile extends StatefulWidget {
   final GattCharacteristic characteristic;
   final String serviceUuid;
@@ -147,7 +238,6 @@ class _CharTile extends StatefulWidget {
 }
 
 class _CharTileState extends State<_CharTile> {
-  bool _subscribed = false;
   Uint8List? _notifyValue;
 
   @override
@@ -158,64 +248,94 @@ class _CharTileState extends State<_CharTile> {
         ch.properties.contains('writeNoResp');
     final canNotify =
         ch.properties.contains('notify') || ch.properties.contains('indicate');
-
     final displayValue = _notifyValue ?? ch.lastValue;
 
-    return ListTile(
-      dense: true,
-      leading: Icon(
-        canNotify
-            ? Icons.notifications_active
-            : canWrite
-                ? Icons.edit
-                : Icons.read_more,
-        size: 20,
-        color: canNotify
-            ? Colors.orange
-            : canWrite
-                ? Colors.blue
-                : Colors.green,
-      ),
-      title: Text(
-        ch.displayName ?? ch.uuid,
-        style: const TextStyle(fontSize: 13, fontFamily: 'monospace'),
-      ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            ch.properties.join(', '),
-            style: const TextStyle(fontSize: 11),
-          ),
-          if (displayValue != null)
-            Text(
-              _formatBytes(displayValue),
-              style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.grey.shade600,
-                  fontFamily: 'monospace'),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-        ],
-      ),
-      trailing: _buildTrailingWidget(canRead, canWrite, canNotify),
+    Color propColor = canNotify
+        ? AppTheme.iosOrange
+        : canWrite
+            ? AppTheme.iosBlue
+            : AppTheme.iosGreen;
+    IconData propIcon = canNotify
+        ? Icons.notifications_active_rounded
+        : canWrite
+            ? Icons.edit_rounded
+            : Icons.download_rounded;
+
+    return InkWell(
       onTap: () => _showCharDetail(ch, canRead, canWrite, canNotify),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: Row(
+          children: [
+            Icon(propIcon, size: 18, color: propColor),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    ch.displayName ?? ch.uuid,
+                    style: const TextStyle(
+                        fontSize: 13,
+                        fontFamily: 'monospace',
+                        fontWeight: FontWeight.w500),
+                  ),
+                  if (displayValue != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        _formatBytes(displayValue),
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: AppTheme.iosGray,
+                            fontFamily: 'monospace'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            // Property badges
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (canRead)
+                  _propBadge('R', AppTheme.iosGreen),
+                if (canWrite) ...[
+                  const SizedBox(width: 3),
+                  _propBadge('W', AppTheme.iosBlue),
+                ],
+                if (canNotify) ...[
+                  const SizedBox(width: 3),
+                  _propBadge('N', AppTheme.iosOrange),
+                ],
+              ],
+            ),
+            const SizedBox(width: 4),
+            Icon(Icons.chevron_right_rounded,
+                size: 18, color: AppTheme.iosGray3),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildTrailingWidget(bool canRead, bool canWrite, bool canNotify) {
-    final value = _notifyValue ?? widget.characteristic.lastValue;
-    if (value != null) {
-      return Text(
-        '${value.length}B',
-        style: const TextStyle(fontSize: 12),
-      );
-    }
-    return const Text('--', style: TextStyle(fontSize: 12));
+  Widget _propBadge(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(label,
+          style: TextStyle(
+              fontSize: 10, fontWeight: FontWeight.w700, color: color)),
+    );
   }
 
-  void _showCharDetail(GattCharacteristic ch, bool canRead, bool canWrite, bool canNotify) {
+  void _showCharDetail(
+      GattCharacteristic ch, bool canRead, bool canWrite, bool canNotify) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -228,21 +348,20 @@ class _CharTileState extends State<_CharTile> {
         onNotifyValue: (val) {
           setState(() => _notifyValue = val);
         },
-        onSubscribeChange: (subscribed) {
-          setState(() => _subscribed = subscribed);
-        },
       ),
     );
   }
 
   String _formatBytes(Uint8List data) {
-    final hex = data.map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ');
-    // 同时尝试 ASCII
-    final ascii = String.fromCharCodes(data.where((b) => b >= 32 && b <= 126));
+    final hex = data
+        .map((b) => b.toRadixString(16).padLeft(2, '0'))
+        .join(' ');
+    final ascii =
+        String.fromCharCodes(data.where((b) => b >= 32 && b <= 126));
     if (ascii.isNotEmpty && ascii.length == data.length) {
-      return 'HEX: $hex\nASCII: $ascii';
+      return '$hex | "$ascii"';
     }
-    return 'HEX: $hex';
+    return hex;
   }
 }
 
@@ -254,7 +373,6 @@ class _CharDetailSheet extends StatefulWidget {
   final bool canWrite;
   final bool canNotify;
   final Function(Uint8List) onNotifyValue;
-  final Function(bool) onSubscribeChange;
 
   const _CharDetailSheet({
     required this.characteristic,
@@ -263,7 +381,6 @@ class _CharDetailSheet extends StatefulWidget {
     required this.canWrite,
     required this.canNotify,
     required this.onNotifyValue,
-    required this.onSubscribeChange,
   });
 
   @override
@@ -289,7 +406,8 @@ class _CharDetailSheetState extends State<_CharDetailSheet> {
 
     setState(() => _loading = true);
     try {
-      final data = await adapter.readChar(widget.serviceUuid, widget.characteristic.uuid);
+      final data = await adapter.readChar(
+          widget.serviceUuid, widget.characteristic.uuid);
       setState(() => _readValue = data);
     } catch (e) {
       _showError('读取失败: $e');
@@ -305,7 +423,6 @@ class _CharDetailSheetState extends State<_CharDetailSheet> {
 
     Uint8List data;
     if (_isHexMode) {
-      // 解析 HEX 输入
       final hex = _writeController.text.trim().replaceAll(' ', '');
       final bytes = <int>[];
       for (var i = 0; i < hex.length; i += 2) {
@@ -318,10 +435,13 @@ class _CharDetailSheetState extends State<_CharDetailSheet> {
 
     setState(() => _loading = true);
     try {
-      await adapter.writeChar(widget.serviceUuid, widget.characteristic.uuid, data);
+      await adapter.writeChar(
+          widget.serviceUuid, widget.characteristic.uuid, data);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('写入成功'), backgroundColor: Colors.green),
+          SnackBar(
+              content: const Text('写入成功'),
+              backgroundColor: AppTheme.iosGreen),
         );
       }
     } catch (e) {
@@ -338,21 +458,20 @@ class _CharDetailSheetState extends State<_CharDetailSheet> {
 
     setState(() => _loading = true);
     try {
-      if (widget.canNotify) {
-        await adapter.subscribeNotify(
-          widget.serviceUuid,
-          widget.characteristic.uuid,
-          (data) {
-            setState(() => _readValue = data);
-            widget.onNotifyValue(data);
-          },
+      await adapter.subscribeNotify(
+        widget.serviceUuid,
+        widget.characteristic.uuid,
+        (data) {
+          setState(() => _readValue = data);
+          widget.onNotifyValue(data);
+        },
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: const Text('已订阅 Notify'),
+              backgroundColor: AppTheme.iosGreen),
         );
-        widget.onSubscribeChange(true);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('已订阅 Notify'), backgroundColor: Colors.green),
-          );
-        }
       }
     } catch (e) {
       _showError('订阅失败: $e');
@@ -364,7 +483,7 @@ class _CharDetailSheetState extends State<_CharDetailSheet> {
   void _showError(String msg) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg), backgroundColor: Colors.red),
+        SnackBar(content: Text(msg), backgroundColor: AppTheme.iosRed),
       );
     }
   }
@@ -378,101 +497,141 @@ class _CharDetailSheetState extends State<_CharDetailSheet> {
       padding: EdgeInsets.only(
         left: 16,
         right: 16,
-        top: 16,
+        top: 8,
         bottom: MediaQuery.of(context).viewInsets.bottom + 16,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 标题
+          // Grabber
+          Center(
+            child: Container(
+              width: 36,
+              height: 5,
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: AppTheme.iosGray3,
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+          ),
+          // Title
           Row(
             children: [
               Expanded(
                 child: Text(
                   ch.displayName ?? ch.uuid,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.w700),
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () => Navigator.pop(context),
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: AppTheme.iosGray5,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.close_rounded,
+                      size: 16, color: AppTheme.iosGray),
+                ),
               ),
             ],
           ),
-          Text(ch.uuid,
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
           const SizedBox(height: 4),
+          Text(ch.uuid,
+              style:
+                  TextStyle(fontSize: 12, color: AppTheme.iosGray, fontFamily: 'monospace')),
+          const SizedBox(height: 8),
           Wrap(
             spacing: 4,
             children: ch.properties.map((p) {
-              return Chip(
-                label: Text(p, style: const TextStyle(fontSize: 10)),
-                visualDensity: VisualDensity.compact,
-                padding: EdgeInsets.zero,
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppTheme.iosBlue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(p,
+                    style: const TextStyle(
+                        fontSize: 10, color: AppTheme.iosBlue)),
               );
             }).toList(),
           ),
-          const Divider(),
+          const Divider(height: 24),
 
-          // 当前值
+          // Current value
           if (value != null) ...[
-            const Text('当前值:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-            const SizedBox(height: 4),
+            Text('当前值',
+                style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: AppTheme.iosGray)),
+            const SizedBox(height: 6),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(8),
+                color: AppTheme.iosGray6,
+                borderRadius: BorderRadius.circular(10),
               ),
               child: SelectableText(
                 _formatValue(value),
                 style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
           ],
 
-          // 操作按钮
+          // Actions
           if (_loading)
-            const Center(child: Padding(padding: EdgeInsets.all(8), child: CircularProgressIndicator()))
-          else ...[
-            Wrap(
-              spacing: 8,
+            const Padding(
+              padding: EdgeInsets.all(12),
+              child: Center(child: CupertinoActivityIndicator()),
+            )
+          else
+            Row(
               children: [
                 if (widget.canRead)
-                  ElevatedButton.icon(
-                    onPressed: _read,
-                    icon: const Icon(Icons.download, size: 18),
-                    label: const Text('读取'),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _read,
+                      icon: const Icon(Icons.download_rounded, size: 18),
+                      label: const Text('读取'),
+                    ),
                   ),
+                if (widget.canRead && widget.canNotify) const SizedBox(width: 8),
                 if (widget.canNotify)
-                  ElevatedButton.icon(
-                    onPressed: _toggleNotify,
-                    icon: const Icon(Icons.notifications, size: 18),
-                    label: const Text('订阅 Notify'),
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _toggleNotify,
+                      icon: const Icon(Icons.notifications_rounded, size: 18),
+                      label: const Text('订阅'),
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.iosOrange),
+                    ),
                   ),
               ],
             ),
-          ],
 
-          // 写入区域
+          // Write area
           if (widget.canWrite) ...[
-            const SizedBox(height: 12),
-            const Text('写入数据:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-            const SizedBox(height: 4),
+            const SizedBox(height: 16),
+            Text('写入数据',
+                style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: AppTheme.iosGray)),
+            const SizedBox(height: 8),
+            // HEX/ASCII toggle
             Row(
               children: [
-                SegmentedButton<bool>(
-                  segments: const [
-                    ButtonSegment(value: true, label: Text('HEX')),
-                    ButtonSegment(value: false, label: Text('ASCII')),
-                  ],
-                  selected: {_isHexMode},
-                  onSelectionChanged: (s) => setState(() => _isHexMode = s.first),
-                ),
+                _buildToggleSegment('HEX', true),
+                const SizedBox(width: 8),
+                _buildToggleSegment('ASCII', false),
               ],
             ),
             const SizedBox(height: 8),
@@ -480,10 +639,8 @@ class _CharDetailSheetState extends State<_CharDetailSheet> {
               controller: _writeController,
               decoration: InputDecoration(
                 hintText: _isHexMode ? '01 02 FF...' : '输入文本',
-                isDense: true,
-                border: const OutlineInputBorder(),
                 suffixIcon: IconButton(
-                  icon: const Icon(Icons.send),
+                  icon: const Icon(Icons.send_rounded, size: 20),
                   onPressed: _write,
                 ),
               ),
@@ -496,11 +653,38 @@ class _CharDetailSheetState extends State<_CharDetailSheet> {
     );
   }
 
-  String _formatValue(Uint8List data) {
-    final hex = data.map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ');
-    final ascii = String.fromCharCodes(
-      data.map((b) => (b >= 32 && b <= 126) ? b : 0x2E), // 非可见字符用 . 代替
+  Widget _buildToggleSegment(String label, bool value) {
+    final selected = (_isHexMode && value == true) || (!_isHexMode && value == false);
+    return GestureDetector(
+      onTap: () => setState(() => _isHexMode = value),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? AppTheme.iosBlue : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: selected ? AppTheme.iosBlue : AppTheme.iosGray4,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: selected ? Colors.white : AppTheme.iosGray,
+          ),
+        ),
+      ),
     );
-    return 'HEX ($data bytes): $hex\nASCII: $ascii';
+  }
+
+  String _formatValue(Uint8List data) {
+    final hex = data
+        .map((b) => b.toRadixString(16).padLeft(2, '0'))
+        .join(' ');
+    final ascii = String.fromCharCodes(
+      data.map((b) => (b >= 32 && b <= 126) ? b : 0x2E),
+    );
+    return 'HEX (${data.length} bytes): $hex\nASCII: $ascii';
   }
 }

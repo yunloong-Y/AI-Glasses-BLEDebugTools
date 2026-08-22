@@ -3,15 +3,16 @@ import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../main.dart';
 import '../plugins/base_plugin.dart';
+import 'theme.dart';
 
 /// ============================================================
-/// OTA 固件升级面板
-/// 支持固件校验、分片传输、断点续传、进度可视化
+/// OTA 固件升级 — iOS 风格
 /// ============================================================
 
 class OtaPage extends StatefulWidget {
@@ -56,24 +57,22 @@ class _OtaPageState extends State<OtaPage> {
   }
 
   String _computeMd5(Uint8List bytes) {
-    final digest = md5.convert(bytes);
-    return digest.toString();
+    return md5.convert(bytes).toString();
   }
 
   Future<void> _startOta() async {
     final bleState = context.read<BleState>();
     final adapter = bleState.adapter;
     if (adapter == null) {
-      _showSnack('请先连接设备', Colors.red);
+      _showSnack('请先连接设备', AppTheme.iosRed);
       return;
     }
 
     if (_firmwarePath == null) {
-      _showSnack('请先选择固件文件', Colors.red);
+      _showSnack('请先选择固件文件', AppTheme.iosRed);
       return;
     }
 
-    // 获取匹配插件的 OTA 分片大小
     final plugin = bleState.selectedDevice != null
         ? PluginRegistry().matchPlugin(bleState.selectedDevice!)
         : null;
@@ -88,7 +87,6 @@ class _OtaPageState extends State<OtaPage> {
       _statusText = '准备升级...';
     });
 
-    // 发送 OTA 开始指令
     try {
       await adapter.sendAtCommand('AT+OTA_BEGIN');
       _statusText = '正在传输固件...';
@@ -98,12 +96,12 @@ class _OtaPageState extends State<OtaPage> {
         onProgress: (p) {
           setState(() {
             _progress = p;
-            _statusText = '传输中 ${_formatBytes((_firmwareSize * p).round())} / ${_formatBytes(_firmwareSize)}';
+            _statusText =
+                '传输中 ${_formatBytes((_firmwareSize * p).round())} / ${_formatBytes(_firmwareSize)}';
           });
         },
       );
 
-      // 发送 OTA 结束指令
       if (result.success) {
         await adapter.sendAtCommand('AT+OTA_END');
       }
@@ -115,14 +113,14 @@ class _OtaPageState extends State<OtaPage> {
 
       _showSnack(
         result.message,
-        result.success ? Colors.green : Colors.red,
+        result.success ? AppTheme.iosGreen : AppTheme.iosRed,
       );
     } catch (e) {
       setState(() {
         _uploading = false;
         _statusText = '升级失败: $e';
       });
-      _showSnack('OTA 失败: $e', Colors.red);
+      _showSnack('OTA 失败: $e', AppTheme.iosRed);
     }
   }
 
@@ -161,196 +159,254 @@ class _OtaPageState extends State<OtaPage> {
   Widget build(BuildContext context) {
     final bleState = context.watch<BleState>();
     final connected = bleState.connected;
-
-    // 获取插件 OTA 配置
     final plugin = bleState.selectedDevice != null
         ? PluginRegistry().matchPlugin(bleState.selectedDevice!)
         : null;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('OTA 固件升级'),
-        actions: [
-          if (connected)
-            Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: Chip(
-                label: Text(plugin?.name ?? bleState.selectedDevice?.name ?? '',
-                    style: const TextStyle(fontSize: 11)),
-                backgroundColor: Colors.blue.shade100,
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar.large(
+            title: const Text('OTA 固件升级'),
+            actions: [
+              if (connected)
+                Container(
+                  margin: const EdgeInsets.only(right: 16),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: AppTheme.iosBlue.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Text(
+                    plugin?.name ?? bleState.selectedDevice?.name ?? '',
+                    style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.iosBlue),
+                  ),
+                ),
+            ],
+          ),
+          if (!connected)
+            const SliverFillRemaining(
+              hasScrollBody: false,
+              child: IosEmptyState(
+                icon: Icons.system_update_rounded,
+                title: '请先连接设备',
+                subtitle: '连接后在面板中选择固件开始升级',
               ),
-            ),
-        ],
-      ),
-      body: !connected
-          ? _buildNotConnected()
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 固件信息卡片
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  // Firmware info section
+                  _buildSectionHeader('固件信息'),
+                  IosCard(
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Expanded(
+                              child: Text('固件文件',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 15)),
+                            ),
+                            ElevatedButton.icon(
+                              onPressed:
+                                  _uploading ? null : _selectFirmware,
+                              icon: const Icon(Icons.folder_open_rounded,
+                                  size: 18),
+                              label: const Text('选择'),
+                            ),
+                          ],
+                        ),
+                        if (_firmwarePath != null) ...[
+                          const SizedBox(height: 12),
+                          _infoRow('文件名', _firmwareName),
+                          _infoRow('大小', _formatBytes(_firmwareSize)),
+                          _infoRow('MD5', _md5Hash, mono: true),
+                        ] else ...[
+                          const SizedBox(height: 16),
+                          Center(
+                            child: Column(
+                              children: [
+                                Icon(Icons.file_present_rounded,
+                                    size: 40, color: AppTheme.iosGray3),
+                                const SizedBox(height: 8),
+                                Text(
+                                  '支持 .bin / .img / .dat / .hex / .zip',
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      color: AppTheme.iosGray),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Config section
+                  _buildSectionHeader('传输配置'),
+                  IosCard(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 10),
+                          child: Row(
+                            children: [
+                              const Text('分片大小'),
+                              const Spacer(),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.iosGray6,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: DropdownButton<int>(
+                                  value: _chunkSize,
+                                  underline: const SizedBox(),
+                                  isDense: true,
+                                  style: const TextStyle(
+                                      fontSize: 14,
+                                      color: AppTheme.iosBlue,
+                                      fontWeight: FontWeight.w600),
+                                  items: const [
+                                    DropdownMenuItem(
+                                        value: 128, child: Text('128 B')),
+                                    DropdownMenuItem(
+                                        value: 256, child: Text('256 B')),
+                                    DropdownMenuItem(
+                                        value: 512, child: Text('512 B')),
+                                    DropdownMenuItem(
+                                        value: 1024, child: Text('1024 B')),
+                                    DropdownMenuItem(
+                                        value: 4096, child: Text('4096 B')),
+                                  ],
+                                  onChanged: (v) =>
+                                      setState(() => _chunkSize = v ?? 512),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Divider(
+                            height: 1, indent: 14, color: AppTheme.iosGray6),
+                        SwitchListTile(
+                          title: const Text('双通道并行传输'),
+                          subtitle: Text(
+                            plugin != null && plugin.otaSupportDualChannel
+                                ? '此设备支持双通道'
+                                : '此设备不支持双通道',
+                            style: TextStyle(
+                                fontSize: 13, color: AppTheme.iosGray),
+                          ),
+                          value: _dualChannel &&
+                              (plugin?.otaSupportDualChannel ?? false),
+                          onChanged:
+                              (plugin?.otaSupportDualChannel ?? false)
+                                  ? (v) => setState(() => _dualChannel = v)
+                                  : null,
+                        ),
+                        if (plugin != null)
+                          Divider(
+                              height: 1, indent: 14, color: AppTheme.iosGray6),
+                        if (plugin != null)
+                          ListTile(
+                            dense: true,
+                            title: Text(
+                                '断点续传: ${plugin.otaSupportResume ? "支持" : "不支持"}',
+                                style: const TextStyle(fontSize: 14)),
+                            trailing: Icon(
+                              plugin.otaSupportResume
+                                  ? Icons.check_circle_rounded
+                                  : Icons.cancel_rounded,
+                              size: 18,
+                              color: plugin.otaSupportResume
+                                  ? AppTheme.iosGreen
+                                  : AppTheme.iosGray,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Progress
+                  if (_uploading || _progress > 0) ...[
+                    _buildSectionHeader('升级进度'),
+                    IosCard(
+                      padding: const EdgeInsets.all(14),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
+                            mainAxisAlignment:
+                                MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text('固件信息',
-                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                              const Spacer(),
-                              ElevatedButton.icon(
-                                onPressed: _uploading ? null : _selectFirmware,
-                                icon: const Icon(Icons.folder_open, size: 18),
-                                label: const Text('选择'),
+                              Expanded(
+                                child: Text(
+                                  _statusText.isEmpty
+                                      ? '升级进度'
+                                      : _statusText,
+                                  style: TextStyle(
+                                      fontSize: 14,
+                                      color: AppTheme.iosGray),
+                                ),
+                              ),
+                              Text(
+                                '${(_progress * 100).toStringAsFixed(1)}%',
+                                style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w700,
+                                    color: _progress >= 1.0
+                                        ? AppTheme.iosGreen
+                                        : AppTheme.iosBlue),
                               ),
                             ],
                           ),
                           const SizedBox(height: 12),
-                          if (_firmwarePath != null) ...[
-                            _infoRow('文件名', _firmwareName),
-                            _infoRow('大小', _formatBytes(_firmwareSize)),
-                            _infoRow('MD5', _md5Hash,
-                                isMonospace: true, maxLines: 1),
-                            _infoRow('路径', _firmwarePath!,
-                                isMonospace: true, maxLines: 1),
-                          ] else ...[
-                            const Center(
-                              child: Padding(
-                                padding: EdgeInsets.all(20),
-                                child: Column(
-                                  children: [
-                                    Icon(Icons.file_present,
-                                        size: 48, color: Colors.grey),
-                                    SizedBox(height: 8),
-                                    Text('支持 .bin / .img / .dat / .hex / .zip 格式',
-                                        style: TextStyle(fontSize: 13, color: Colors.grey)),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // 配置选项
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('传输配置',
-                              style: TextStyle(fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              const Text('分片大小'),
-                              const SizedBox(width: 16),
-                              DropdownButton<int>(
-                                value: _chunkSize,
-                                items: const [
-                                  DropdownMenuItem(value: 128, child: Text('128 B')),
-                                  DropdownMenuItem(value: 256, child: Text('256 B')),
-                                  DropdownMenuItem(value: 512, child: Text('512 B')),
-                                  DropdownMenuItem(value: 1024, child: Text('1024 B')),
-                                  DropdownMenuItem(value: 4096, child: Text('4096 B')),
-                                ],
-                                onChanged: (v) =>
-                                    setState(() => _chunkSize = v ?? 512),
-                              ),
-                              const Spacer(),
-                              if (plugin != null) ...[
-                                const Text('推荐: ', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                                Text('${plugin.otaChunkSize} B',
-                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                              ]
-                            ],
-                          ),
-                          SwitchListTile(
-                            title: const Text('双通道并行传输 (AR 眼镜)'),
-                            subtitle: Text(
-                              plugin != null && plugin.otaSupportDualChannel
-                                  ? '此设备支持双通道'
-                                  : '此设备不支持双通道',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: plugin != null && plugin.otaSupportDualChannel
-                                    ? Colors.green
-                                    : Colors.grey,
-                              ),
-                            ),
-                            value: _dualChannel && (plugin?.otaSupportDualChannel ?? false),
-                            onChanged: (plugin?.otaSupportDualChannel ?? false)
-                                ? (v) => setState(() => _dualChannel = v)
-                                : null,
-                          ),
-                          if (plugin != null)
-                            ListTile(
-                              dense: true,
-                              leading: const Icon(Icons.info_outline, size: 18),
-                              title: Text('断点续传: ${plugin.otaSupportResume ? "支持" : "不支持"}',
-                                  style: const TextStyle(fontSize: 12)),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // 进度条
-                  if (_uploading || _progress > 0) ...[
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  _statusText.isEmpty ? '升级进度' : _statusText,
-                                  style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.grey.shade700),
-                                ),
-                                Text(
-                                  '${(_progress * 100).toStringAsFixed(1)}%',
-                                  style: const TextStyle(
-                                      fontSize: 18, fontWeight: FontWeight.bold),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            LinearProgressIndicator(
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: LinearProgressIndicator(
                               value: _progress,
                               minHeight: 8,
-                              backgroundColor: Colors.grey.shade200,
+                              backgroundColor: AppTheme.iosGray5,
                               valueColor: AlwaysStoppedAnimation<Color>(
-                                _progress >= 1.0 ? Colors.green : Colors.blue,
+                                _progress >= 1.0
+                                    ? AppTheme.iosGreen
+                                    : AppTheme.iosBlue,
                               ),
                             ),
+                          ),
+                          if (_uploading &&
+                              _progress > 0 &&
+                              _progress < 1) ...[
                             const SizedBox(height: 8),
-                            // 传输速度估算
-                            if (_uploading && _progress > 0 && _progress < 1)
-                              Text(
-                                _estimateSpeed(),
-                                style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
-                              ),
+                            Text(
+                              '已传输 ${_formatBytes((_firmwareSize * _progress).round())} / ${_formatBytes(_firmwareSize)}',
+                              style: TextStyle(
+                                  fontSize: 12, color: AppTheme.iosGray),
+                            ),
                           ],
-                        ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                   ],
 
-                  // 操作按钮
+                  // Action buttons
                   Row(
                     children: [
                       Expanded(
@@ -358,18 +414,20 @@ class _OtaPageState extends State<OtaPage> {
                           onPressed: (_firmwarePath == null || _uploading)
                               ? null
                               : _startOta,
-                          icon: const Icon(Icons.upload),
+                          icon: const Icon(Icons.upload_rounded),
                           label: const Text('开始升级'),
                           style: ElevatedButton.styleFrom(
                             minimumSize: const Size(0, 48),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: _uploading ? _pauseOta : null,
-                          icon: Icon(_paused ? Icons.play_arrow : Icons.pause),
+                          icon: Icon(_paused
+                              ? Icons.play_arrow_rounded
+                              : Icons.pause_rounded),
                           label: Text(_paused ? '恢复' : '暂停'),
                           style: OutlinedButton.styleFrom(
                             minimumSize: const Size(0, 48),
@@ -379,83 +437,84 @@ class _OtaPageState extends State<OtaPage> {
                     ],
                   ),
 
-                  // 升级完成后显示重启提示
+                  // Success message
                   if (_progress >= 1.0) ...[
                     const SizedBox(height: 16),
-                    Card(
-                      color: Colors.green.shade50,
-                      child: const Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Row(
-                          children: [
-                            Icon(Icons.check_circle, color: Colors.green),
-                            SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                '固件升级完成！设备将自动重启，请等待重新连接。',
-                                style: TextStyle(color: Colors.green),
-                              ),
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppTheme.iosGreen.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            color: AppTheme.iosGreen.withOpacity(0.2)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.check_circle_rounded,
+                              color: AppTheme.iosGreen),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              '固件升级完成！设备将自动重启。',
+                              style: TextStyle(
+                                  color: AppTheme.iosGreen,
+                                  fontWeight: FontWeight.w500),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
-                ],
+                  const SizedBox(height: 24),
+                ]),
               ),
             ),
-    );
-  }
-
-  Widget _buildNotConnected() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.system_update, size: 64, color: Colors.grey.shade400),
-          const SizedBox(height: 16),
-          Text('请先连接设备',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 16)),
-          const SizedBox(height: 8),
-          Text('连接后在面板中选择固件开始升级',
-              style: TextStyle(color: Colors.grey.shade400, fontSize: 13)),
         ],
       ),
     );
   }
 
-  Widget _infoRow(String label, String value,
-      {bool isMonospace = false, int maxLines = 2}) {
+  Widget _buildSectionHeader(String title) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      padding: const EdgeInsets.only(left: 16, bottom: 6, top: 4),
+      child: Text(
+        title.toUpperCase(),
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: AppTheme.iosGray,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+
+  Widget _infoRow(String label, String value, {bool mono = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
             width: 50,
             child: Text(label,
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                style: TextStyle(fontSize: 13, color: AppTheme.iosGray)),
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               value,
               style: TextStyle(
-                fontSize: 13,
-                fontFamily: isMonospace ? 'monospace' : null,
+                fontSize: 14,
+                fontFamily: mono ? 'monospace' : null,
+                fontWeight: FontWeight.w500,
               ),
-              maxLines: maxLines,
+              maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
       ),
     );
-  }
-
-  String _estimateSpeed() {
-    if (_firmwareSize == 0 || _progress == 0) return '';
-    final sent = (_firmwareSize * _progress).round();
-    return '已传输 ${_formatBytes(sent)} / ${_formatBytes(_firmwareSize)}';
   }
 }

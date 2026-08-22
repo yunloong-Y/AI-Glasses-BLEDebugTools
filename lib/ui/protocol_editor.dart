@@ -7,6 +7,7 @@
 ///   4. 协议校验与对比
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import '../core/protocol_parser.dart';
 import '../core/protocol_registry.dart';
 import 'dart:convert';
@@ -499,7 +500,13 @@ class _ProtocolEditorPageState extends State<ProtocolEditorPage> {
             icon: const Icon(Icons.copy, size: 16),
             label: const Text('复制'),
             onPressed: () {
-              // Clipboard copy
+              Clipboard.setData(ClipboardData(text: jsonStr));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('已复制到剪贴板'),
+                  duration: Duration(seconds: 1),
+                ),
+              );
               Navigator.pop(ctx);
             },
           ),

@@ -1,14 +1,15 @@
 import 'dart:typed_data';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../main.dart';
 import '../plugins/base_plugin.dart';
+import 'theme.dart';
 
 /// ============================================================
-/// 寄存器 & AT 指令调试面板
-/// 寄存器地址映射表、批量读写、AT 指令快捷发送
+/// 寄存器 & AT 指令调试面板 — iOS 风格
 /// ============================================================
 
 class RegisterDebugPage extends StatefulWidget {
@@ -24,15 +25,8 @@ class _RegisterDebugPageState extends State<RegisterDebugPage>
   final _atInputController = TextEditingController();
   final _regAddrController = TextEditingController();
   final _regValueController = TextEditingController();
-
-  /// 寄存器映射表（从匹配的插件获取）
   Map<int, String> _registerMap = {};
-
-  /// AT 历史记录
   final List<_AtHistoryItem> _atHistory = [];
-
-  /// AT 响应监听
-  String? _lastAtResponse;
 
   @override
   void initState() {
@@ -42,7 +36,6 @@ class _RegisterDebugPageState extends State<RegisterDebugPage>
   }
 
   void _loadRegisterMap() {
-    // 从已注册插件中获取寄存器映射
     final bleState = context.read<BleState>();
     final reg = PluginRegistry();
     final device = bleState.selectedDevice;
@@ -50,21 +43,16 @@ class _RegisterDebugPageState extends State<RegisterDebugPage>
     if (device != null) {
       final plugin = reg.matchPlugin(device);
       if (plugin != null) {
-        setState(() {
-          _registerMap = plugin.registerMap;
-        });
+        setState(() => _registerMap = plugin.registerMap);
         return;
       }
     }
 
-    // 没有匹配到特定插件时，合并所有已注册插件的映射表
     final merged = <int, String>{};
     for (final p in reg.plugins) {
       merged.addAll(p.registerMap);
     }
-    setState(() {
-      _registerMap = merged;
-    });
+    setState(() => _registerMap = merged);
   }
 
   @override
@@ -80,19 +68,19 @@ class _RegisterDebugPageState extends State<RegisterDebugPage>
     final bleState = context.read<BleState>();
     final adapter = bleState.adapter;
     if (adapter == null) {
-      _showSnack('请先连接设备', Colors.red);
+      _showSnack('请先连接设备', AppTheme.iosRed);
       return;
     }
 
     final addrStr = _regAddrController.text.trim();
     if (addrStr.isEmpty) {
-      _showSnack('请输入寄存器地址', Colors.orange);
+      _showSnack('请输入寄存器地址', AppTheme.iosOrange);
       return;
     }
 
     final addr = _parseAddress(addrStr);
     if (addr == null) {
-      _showSnack('地址格式无效，请使用 0x 或十进制', Colors.red);
+      _showSnack('地址格式无效', AppTheme.iosRed);
       return;
     }
 
@@ -114,13 +102,11 @@ class _RegisterDebugPageState extends State<RegisterDebugPage>
         ));
       });
     } catch (e) {
-      setState(() {
-        _atHistory.add(_AtHistoryItem(
-          direction: 'RX',
-          text: 'ERROR: $e',
-          type: 'ERR',
-        ));
-      });
+      setState(() => _atHistory.add(_AtHistoryItem(
+        direction: 'RX',
+        text: 'ERROR: $e',
+        type: 'ERR',
+      )));
     }
   }
 
@@ -128,31 +114,30 @@ class _RegisterDebugPageState extends State<RegisterDebugPage>
     final bleState = context.read<BleState>();
     final adapter = bleState.adapter;
     if (adapter == null) {
-      _showSnack('请先连接设备', Colors.red);
+      _showSnack('请先连接设备', AppTheme.iosRed);
       return;
     }
 
     final addrStr = _regAddrController.text.trim();
     final valStr = _regValueController.text.trim();
     if (addrStr.isEmpty || valStr.isEmpty) {
-      _showSnack('请输入地址和写入值', Colors.orange);
+      _showSnack('请输入地址和写入值', AppTheme.iosOrange);
       return;
     }
 
     final addr = _parseAddress(addrStr);
     if (addr == null) {
-      _showSnack('地址格式无效', Colors.red);
+      _showSnack('地址格式无效', AppTheme.iosRed);
       return;
     }
 
-    // 解析 hex 值
     final hex = valStr.replaceAll(' ', '');
     final bytes = <int>[];
     for (var i = 0; i < hex.length; i += 2) {
       try {
         bytes.add(int.parse(hex.substring(i, i + 2), radix: 16));
       } catch (_) {
-        _showSnack('HEX 格式无效', Colors.red);
+        _showSnack('HEX 格式无效', AppTheme.iosRed);
         return;
       }
     }
@@ -165,21 +150,17 @@ class _RegisterDebugPageState extends State<RegisterDebugPage>
 
     try {
       await adapter.writeRegister(addr, Uint8List.fromList(bytes));
-      setState(() {
-        _atHistory.add(_AtHistoryItem(
-          direction: 'RX',
-          text: 'OK',
-          type: 'REG',
-        ));
-      });
+      setState(() => _atHistory.add(_AtHistoryItem(
+        direction: 'RX',
+        text: 'OK',
+        type: 'REG',
+      )));
     } catch (e) {
-      setState(() {
-        _atHistory.add(_AtHistoryItem(
-          direction: 'RX',
-          text: 'ERROR: $e',
-          type: 'ERR',
-        ));
-      });
+      setState(() => _atHistory.add(_AtHistoryItem(
+        direction: 'RX',
+        text: 'ERROR: $e',
+        type: 'ERR',
+      )));
     }
   }
 
@@ -190,7 +171,7 @@ class _RegisterDebugPageState extends State<RegisterDebugPage>
     if (cmd.isEmpty) return;
 
     if (adapter == null) {
-      _showSnack('请先连接设备', Colors.red);
+      _showSnack('请先连接设备', AppTheme.iosRed);
       return;
     }
 
@@ -207,25 +188,20 @@ class _RegisterDebugPageState extends State<RegisterDebugPage>
 
     try {
       final result = await adapter.sendAtCommand(fullCmd);
-      setState(() {
-        _atHistory.add(_AtHistoryItem(
-          direction: 'RX',
-          text: result,
-          type: 'AT',
-        ));
-      });
+      setState(() => _atHistory.add(_AtHistoryItem(
+        direction: 'RX',
+        text: result,
+        type: 'AT',
+      )));
     } catch (e) {
-      setState(() {
-        _atHistory.add(_AtHistoryItem(
-          direction: 'RX',
-          text: 'ERROR: $e',
-          type: 'ERR',
-        ));
-      });
+      setState(() => _atHistory.add(_AtHistoryItem(
+        direction: 'RX',
+        text: 'ERROR: $e',
+        type: 'ERR',
+      )));
     }
   }
 
-  /// 快捷发送 AT 指令（从模板列表点击）
   Future<void> _sendQuickAt(String template) async {
     _atInputController.text = template;
     await _sendAtCommand();
@@ -250,135 +226,64 @@ class _RegisterDebugPageState extends State<RegisterDebugPage>
     final bleState = context.watch<BleState>();
     final connected = bleState.connected;
 
-    // 连接状态变化时重新加载寄存器映射
     if (connected && _registerMap.isEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _loadRegisterMap());
     }
 
-    // 获取当前设备的 AT 模板
     final plugin = bleState.selectedDevice != null
         ? PluginRegistry().matchPlugin(bleState.selectedDevice!)
         : null;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('寄存器 / AT 调试'),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(icon: Icon(Icons.memory), text: '寄存器'),
-            Tab(icon: Icon(Icons.terminal), text: 'AT 指令'),
-          ],
-        ),
-      ),
-      body: !connected
-          ? _buildNotConnected()
-          : TabBarView(
-              controller: _tabController,
+      body: Column(
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.only(top: 44, left: 16, bottom: 0),
+            child: Row(
               children: [
-                _buildRegisterTab(),
-                _buildAtTab(plugin?.atCommandTemplates ?? []),
+                Expanded(
+                  child: Text(
+                    '寄存器 / AT 调试',
+                    style: TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                ),
               ],
             ),
-    );
-  }
-
-  Widget _buildNotConnected() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.usb_off, size: 64, color: Colors.grey.shade400),
-          const SizedBox(height: 16),
-          Text('请先连接设备',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 16)),
-          const SizedBox(height: 8),
-          Text('连接后在寄存器和 AT 标签页中可发送指令',
-              style: TextStyle(color: Colors.grey.shade400, fontSize: 13)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRegisterTab() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          // 地址输入
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _regAddrController,
-                  decoration: const InputDecoration(
-                    labelText: '寄存器地址 (0x...)',
-                    hintText: '例如 0x10',
-                    border: OutlineInputBorder(),
-                    isDense: true,
-                  ),
-                  style: const TextStyle(fontFamily: 'monospace'),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: TextField(
-                  controller: _regValueController,
-                  decoration: const InputDecoration(
-                    labelText: '值 (hex)',
-                    hintText: '例如 01 FF',
-                    border: OutlineInputBorder(),
-                    isDense: true,
-                  ),
-                  style: const TextStyle(fontFamily: 'monospace'),
-                ),
-              ),
-            ],
           ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _readRegister,
-                  icon: const Icon(Icons.download, size: 18),
-                  label: const Text('读取'),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _writeRegister,
-                  icon: const Icon(Icons.upload, size: 18),
-                  label: const Text('写入'),
-                ),
-              ),
-            ],
+          // Cupertino style segmented control
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              color: AppTheme.iosGray6,
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Row(
+              children: [
+                _buildTabSegment(0, Icons.memory_rounded, '寄存器'),
+                _buildTabSegment(1, Icons.terminal_rounded, 'AT 指令'),
+              ],
+            ),
           ),
-          const SizedBox(height: 16),
-          // 寄存器映射表
           Expanded(
-            child: _registerMap.isEmpty
-                ? Center(
-                    child: Text('无寄存器映射',
-                        style: TextStyle(color: Colors.grey.shade400)),
+            child: !connected
+                ? IosEmptyState(
+                    icon: Icons.usb_off_rounded,
+                    title: '请先连接设备',
+                    subtitle: '连接后可发送寄存器和 AT 指令',
                   )
-                : ListView.builder(
-                    itemCount: _registerMap.length,
-                    itemBuilder: (ctx, i) {
-                      final entry = _registerMap.entries.elementAt(i);
-                      return ListTile(
-                        dense: true,
-                        leading: Text(
-                          '0x${entry.key.toRadixString(16).toUpperCase().padLeft(4, '0')}',
-                          style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold),
-                        ),
-                        title: Text(entry.value),
-                        onTap: () {
-                          _regAddrController.text =
-                              '0x${entry.key.toRadixString(16)}';
-                        },
-                      );
+                : AnimatedBuilder(
+                    animation: _tabController,
+                    builder: (ctx, _) {
+                      if (_tabController.index == 0) {
+                        return _buildRegisterTab();
+                      }
+                      return _buildAtTab(plugin?.atCommandTemplates ?? []);
                     },
                   ),
           ),
@@ -387,97 +292,310 @@ class _RegisterDebugPageState extends State<RegisterDebugPage>
     );
   }
 
-  Widget _buildAtTab(List<String> templates) {
-    return Column(
+  Widget _buildTabSegment(int index, IconData icon, String label) {
+    final selected = _tabController.index == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          _tabController.animateTo(index);
+          setState(() {});
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 7),
+          decoration: BoxDecoration(
+            color: selected ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(7),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.06),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                  ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 16, color: selected ? AppTheme.iosBlue : AppTheme.iosGray),
+              const SizedBox(width: 6),
+              Text(label,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: selected ? AppTheme.iosBlue : AppTheme.iosGray,
+                  )),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRegisterTab() {
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       children: [
-        // AT 模板快捷按钮
-        if (templates.isNotEmpty)
-          SizedBox(
-            height: 44,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              children: templates.map((cmd) {
+        // Input card
+        IosCard(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _regAddrController,
+                      decoration: const InputDecoration(
+                        labelText: '地址',
+                        hintText: '0x10',
+                      ),
+                      style: const TextStyle(fontFamily: 'monospace'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextField(
+                      controller: _regValueController,
+                      decoration: const InputDecoration(
+                        labelText: '值 (hex)',
+                        hintText: '01 FF',
+                      ),
+                      style: const TextStyle(fontFamily: 'monospace'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _readRegister,
+                      icon: const Icon(Icons.download_rounded, size: 18),
+                      label: const Text('读取'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _writeRegister,
+                      icon: const Icon(Icons.upload_rounded, size: 18),
+                      label: const Text('写入'),
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.iosOrange),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        IosSectionHeader(title: '寄存器映射表'),
+        if (_registerMap.isEmpty)
+          Padding(
+            padding: const EdgeInsets.all(32),
+            child: Center(
+              child: Text('无寄存器映射',
+                  style: TextStyle(color: AppTheme.iosGray)),
+            ),
+          )
+        else
+          IosCard(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Column(
+              children: _registerMap.entries.map((entry) {
                 return Padding(
-                  padding: const EdgeInsets.only(right: 4),
-                  child: ActionChip(
-                    label: Text(cmd, style: const TextStyle(fontSize: 11, fontFamily: 'monospace')),
-                    onPressed: () => _sendQuickAt(cmd),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppTheme.iosBlue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          '0x${entry.key.toRadixString(16).toUpperCase().padLeft(4, '0')}',
+                          style: const TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.iosBlue),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(entry.value,
+                            style: const TextStyle(fontSize: 14)),
+                      ),
+                    ],
                   ),
                 );
               }).toList(),
             ),
           ),
-        // AT 历史
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  Widget _buildAtTab(List<String> templates) {
+    return Column(
+      children: [
+        // Template shortcuts
+        if (templates.isNotEmpty)
+          SizedBox(
+            height: 38,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              children: templates.map((cmd) {
+                return Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: GestureDetector(
+                    onTap: () => _sendQuickAt(cmd),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.iosBlue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                            color: AppTheme.iosBlue.withOpacity(0.2)),
+                      ),
+                      child: Center(
+                        child: Text(cmd,
+                            style: const TextStyle(
+                                fontSize: 12,
+                                fontFamily: 'monospace',
+                                color: AppTheme.iosBlue,
+                                fontWeight: FontWeight.w600)),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        // History
         Expanded(
           child: _atHistory.isEmpty
-              ? Center(
-                  child: Text('无 AT 指令历史',
-                      style: TextStyle(color: Colors.grey.shade400)),
+              ? IosEmptyState(
+                  icon: Icons.terminal_rounded,
+                  title: '无指令历史',
+                  subtitle: '发送的指令将显示在此处',
                 )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(8),
-                  itemCount: _atHistory.length,
-                  itemBuilder: (ctx, i) {
-                    final item = _atHistory[i];
-                    final color = item.type == 'ERR'
-                        ? Colors.red
-                        : item.direction == 'TX'
-                            ? Colors.blue
-                            : Colors.green;
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 2),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SizedBox(
-                            width: 24,
-                            child: Icon(
-                              item.direction == 'TX'
-                                  ? Icons.arrow_upward
-                                  : Icons.arrow_downward,
-                              size: 14,
-                              color: color,
-                            ),
+              : Container(
+                  margin: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).cardTheme.color,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    itemCount: _atHistory.length,
+                    itemBuilder: (ctx, i) {
+                      final item = _atHistory[i];
+                      final color = item.type == 'ERR'
+                          ? AppTheme.iosRed
+                          : item.direction == 'TX'
+                              ? AppTheme.iosBlue
+                              : AppTheme.iosGreen;
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          border: Border(
+                            bottom: BorderSide(
+                                color: AppTheme.iosGray6, width: 0.5),
                           ),
-                          Expanded(
-                            child: Text(
-                              item.text,
-                              style: TextStyle(
-                                fontFamily: 'monospace',
-                                fontSize: 12,
-                                color: item.type == 'ERR' ? Colors.red : null,
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Icon(
+                                item.direction == 'TX'
+                                    ? Icons.arrow_upward_rounded
+                                    : Icons.arrow_downward_rounded,
+                                size: 14,
+                                color: color,
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                item.text,
+                                style: TextStyle(
+                                  fontFamily: 'monospace',
+                                  fontSize: 12,
+                                  color: item.type == 'ERR'
+                                      ? AppTheme.iosRed
+                                      : null,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
                 ),
         ),
-        // AT 输入框
-        Padding(
-          padding: const EdgeInsets.all(8),
+        // Input bar
+        Container(
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardTheme.color,
+            borderRadius: BorderRadius.circular(14),
+          ),
           child: Row(
             children: [
-              const Text('AT+', style: TextStyle(fontWeight: FontWeight.bold)),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppTheme.iosBlue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text('AT+',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.iosBlue,
+                        fontSize: 13)),
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: TextField(
                   controller: _atInputController,
                   decoration: const InputDecoration(
                     hintText: '输入指令...',
+                    border: InputBorder.none,
+                    filled: false,
                     isDense: true,
-                    border: OutlineInputBorder(),
                   ),
-                  style: const TextStyle(fontFamily: 'monospace'),
+                  style: const TextStyle(fontFamily: 'monospace', fontSize: 14),
                   onSubmitted: (_) => _sendAtCommand(),
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.send),
-                onPressed: _sendAtCommand,
+              GestureDetector(
+                onTap: _sendAtCommand,
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: AppTheme.iosBlue,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.send_rounded,
+                      color: Colors.white, size: 16),
+                ),
               ),
             ],
           ),
@@ -487,11 +605,10 @@ class _RegisterDebugPageState extends State<RegisterDebugPage>
   }
 }
 
-/// AT 历史记录项
 class _AtHistoryItem {
-  final String direction; // TX / RX
+  final String direction;
   final String text;
-  final String type; // AT / REG / ERR
+  final String type;
 
   _AtHistoryItem({
     required this.direction,

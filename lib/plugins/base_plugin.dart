@@ -47,12 +47,20 @@ class PluginRegistry {
 
   List<BaseChipPlugin> get plugins => List.unmodifiable(_plugins);
 
+  /// 注册插件（按 vendorId 去重）
+  /// main.dart 启动时与 PluginManagerPage.initState 都会注册内置插件，
+  /// 且传入的是不同实例，若不去重会导致列表膨胀、开关状态错乱。
   void register(BaseChipPlugin plugin) {
-    _plugins.add(plugin);
+    final exists =
+        _plugins.any((p) => p.vendorId == plugin.vendorId);
+    if (!exists) {
+      _plugins.add(plugin);
+    }
   }
 
+  /// 注销插件（按 vendorId 匹配，兼容不同实例）
   void unregister(BaseChipPlugin plugin) {
-    _plugins.remove(plugin);
+    _plugins.removeWhere((p) => p.vendorId == plugin.vendorId);
   }
 
   /// 根据设备信息自动匹配插件

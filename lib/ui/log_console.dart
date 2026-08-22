@@ -8,11 +8,10 @@ import '../adapter/base_bluetooth.dart';
 import '../core/file_export.dart';
 import '../core/log_parser.dart';
 import '../main.dart';
+import 'theme.dart';
 
 /// ============================================================
-/// 实时日志控制台
-/// 分标签: HCI / 厂商日志 / 音频 / OTA / AT 指令
-/// 支持过滤、搜索、导出
+/// 实时日志控制台 — iOS 风格
 /// ============================================================
 
 class LogConsole extends StatefulWidget {
@@ -31,31 +30,27 @@ class _LogConsoleState extends State<LogConsole> {
   final List<LogItem> _logs = [];
 
   final _logTypeLabels = {
-    LogType.hci: ('HCI', Colors.blue),
-    LogType.vendorLog: ('VENDOR', Colors.purple),
-    LogType.audio: ('AUDIO', Colors.orange),
-    LogType.ota: ('OTA', Colors.teal),
-    LogType.atCmd: ('AT', Colors.red),
-    LogType.system: ('SYS', Colors.grey),
+    LogType.hci: ('HCI', AppTheme.iosBlue),
+    LogType.vendorLog: ('VENDOR', AppTheme.iosPurple),
+    LogType.audio: ('AUDIO', AppTheme.iosOrange),
+    LogType.ota: ('OTA', AppTheme.iosTeal),
+    LogType.atCmd: ('AT', AppTheme.iosRed),
+    LogType.system: ('SYS', AppTheme.iosGray),
   };
 
   @override
   void initState() {
     super.initState();
-    // 监听 LogParser 日志流
     final logParser = context.read<LogParser>();
     _logSub = logParser.logStream.listen((item) {
       if (!mounted) return;
       setState(() {
         _logs.add(item);
-        // 限制 UI 缓存大小（LogParser 自身有 10 万缓存）
         if (_logs.length > 5000) {
           _logs.removeRange(0, _logs.length - 5000);
         }
       });
-      if (_autoScroll) {
-        _scrollToBottom();
-      }
+      if (_autoScroll) _scrollToBottom();
     });
   }
 
@@ -113,6 +108,7 @@ class _LogConsoleState extends State<LogConsole> {
             content: Text('已导出 $path'),
             action: SnackBarAction(
               label: '分享',
+              textColor: AppTheme.iosBlue,
               onPressed: () {
                 Share.shareXFiles([XFile(path)]);
               },
@@ -122,7 +118,9 @@ class _LogConsoleState extends State<LogConsole> {
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('导出失败: $e'), backgroundColor: Colors.red),
+        SnackBar(
+            content: Text('导出失败: $e'),
+            backgroundColor: AppTheme.iosRed),
       );
     }
   }
@@ -133,134 +131,219 @@ class _LogConsoleState extends State<LogConsole> {
     final logs = _filteredLogs;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('实时日志${bleState.connected ? " (${_logs.length})" : ""}'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.delete_outline),
-            onPressed: () {
-              context.read<LogParser>().clear();
-              setState(() => _logs.clear());
-            },
-            tooltip: '清空日志',
-          ),
-          IconButton(
-            icon: const Icon(Icons.download),
-            onPressed: _exportLogs,
-            tooltip: '导出',
-          ),
-        ],
-      ),
       body: Column(
         children: [
-          // 过滤栏
-          Padding(
-            padding: const EdgeInsets.all(8),
-            child: Row(
+          // iOS style large title header
+          Container(
+            padding: const EdgeInsets.only(top: 44, left: 16, right: 16, bottom: 8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.9),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: TextField(
-                    decoration: const InputDecoration(
-                      hintText: '搜索关键字...',
-                      prefixIcon: Icon(Icons.search, size: 20),
-                      isDense: true,
-                      border: OutlineInputBorder(),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '实时日志 ${bleState.connected ? "(${_logs.length})" : ""}',
+                        style: TextStyle(
+                          fontSize: 30,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
                     ),
-                    onChanged: (v) => setState(() => _filterKeyword = v),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                DropdownButton<LogType?>(
-                  value: _filterType,
-                  hint: const Text('全部'),
-                  items: [
-                    const DropdownMenuItem(value: null, child: Text('全部')),
-                    ..._logTypeLabels.entries.map((e) =>
-                        DropdownMenuItem(
-                            value: e.key, child: Text(e.value.$1))),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline_rounded),
+                      onPressed: () {
+                        context.read<LogParser>().clear();
+                        setState(() => _logs.clear());
+                      },
+                      tooltip: '清空',
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.ios_share_rounded),
+                      onPressed: _exportLogs,
+                      tooltip: '导出',
+                    ),
                   ],
-                  onChanged: (v) => setState(() => _filterType = v),
                 ),
-                IconButton(
-                  icon: Icon(_autoScroll
-                      ? Icons.vertical_align_bottom
-                      : Icons.vertical_align_top),
-                  onPressed: () {
-                    setState(() => _autoScroll = !_autoScroll);
-                    if (_autoScroll) _scrollToBottom();
-                  },
-                  tooltip: _autoScroll ? '自动滚动: 开' : '自动滚动: 关',
+                const SizedBox(height: 8),
+                // Filter bar
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 38,
+                        child: TextField(
+                          decoration: const InputDecoration(
+                            hintText: '搜索关键字...',
+                            prefixIcon: Icon(Icons.search_rounded, size: 18),
+                            contentPadding: EdgeInsets.zero,
+                            isDense: true,
+                          ),
+                          onChanged: (v) =>
+                              setState(() => _filterKeyword = v),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Type filter chips
+                    Expanded(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            _buildTypeChip(null, '全部'),
+                            ..._logTypeLabels.entries.map((e) =>
+                                _buildTypeChip(e.key, e.value.$1, e.value.$2)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        _autoScroll
+                            ? Icons.vertical_align_bottom_rounded
+                            : Icons.vertical_align_top_rounded,
+                        size: 20,
+                        color: _autoScroll ? AppTheme.iosBlue : AppTheme.iosGray,
+                      ),
+                      onPressed: () {
+                        setState(() => _autoScroll = !_autoScroll);
+                        if (_autoScroll) _scrollToBottom();
+                      },
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
-          // 日志列表
+          // Log list
           Expanded(
             child: logs.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.terminal,
-                            size: 64,
-                            color: Colors.grey.shade300),
-                        const SizedBox(height: 16),
-                        Text('暂无日志',
-                            style: TextStyle(color: Colors.grey.shade400)),
-                        if (!bleState.connected) ...[
-                          const SizedBox(height: 8),
-                          Text('连接设备后将自动记录 BLE 通信日志',
-                              style: TextStyle(
-                                  color: Colors.grey.shade400, fontSize: 12)),
-                        ],
-                      ],
-                    ),
+                ? IosEmptyState(
+                    icon: Icons.terminal_rounded,
+                    title: '暂无日志',
+                    subtitle: bleState.connected
+                        ? null
+                        : '连接设备后将自动记录 BLE 通信日志',
                   )
-                : ListView.builder(
-                    controller: _scrollController,
-                    itemCount: logs.length,
-                    itemBuilder: (ctx, i) {
-                      final log = logs[i];
-                      final label = _logTypeLabels[log.type]!;
-                      return ListTile(
-                        dense: true,
-                        leading: Container(
+                : Container(
+                    color: Theme.of(context).cardTheme.color,
+                    child: ListView.builder(
+                      controller: _scrollController,
+                      itemCount: logs.length,
+                      itemBuilder: (ctx, i) {
+                        final log = logs[i];
+                        final label = _logTypeLabels[log.type]!;
+                        final isTx = log.dir == LogDirection.send;
+
+                        return Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 4, vertical: 2),
+                              horizontal: 14, vertical: 8),
                           decoration: BoxDecoration(
-                            color: label.$2.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(4),
+                            border: Border(
+                              bottom: BorderSide(
+                                color: AppTheme.iosGray6,
+                                width: 0.5,
+                              ),
+                            ),
                           ),
-                          child: Text(label.$1,
-                              style: TextStyle(
-                                  color: label.$2,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold)),
-                        ),
-                        title: Text(
-                          log.decodeText.isNotEmpty
-                              ? log.decodeText
-                              : log.rawHex,
-                          style: const TextStyle(
-                              fontFamily: 'monospace', fontSize: 12),
-                        ),
-                        subtitle: Text(
-                          '${_formatTime(log.timestamp)} '
-                          '${log.dir == LogDirection.send ? "TX" : "RX"} '
-                          '${log.deviceMac.isNotEmpty ? log.deviceMac : ""}',
-                          style: TextStyle(
-                              fontSize: 10, color: Colors.grey.shade500),
-                        ),
-                        trailing: log.dir == LogDirection.send
-                            ? const Icon(Icons.arrow_upward,
-                                size: 14, color: Colors.blue)
-                            : const Icon(Icons.arrow_downward,
-                                size: 14, color: Colors.green),
-                      );
-                    },
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Type badge
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: label.$2.withOpacity(0.12),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(label.$1,
+                                    style: TextStyle(
+                                        color: label.$2,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w700)),
+                              ),
+                              const SizedBox(width: 8),
+                              // Direction icon
+                              Icon(
+                                isTx
+                                    ? Icons.arrow_upward_rounded
+                                    : Icons.arrow_downward_rounded,
+                                size: 14,
+                                color: isTx
+                                    ? AppTheme.iosBlue
+                                    : AppTheme.iosGreen,
+                              ),
+                              const SizedBox(width: 6),
+                              // Content
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      log.decodeText.isNotEmpty
+                                          ? log.decodeText
+                                          : log.rawHex,
+                                      style: const TextStyle(
+                                          fontFamily: 'monospace',
+                                          fontSize: 12),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '${_formatTime(log.timestamp)}  ${log.deviceMac.isNotEmpty ? log.deviceMac : ""}',
+                                      style: TextStyle(
+                                          fontSize: 10,
+                                          color: AppTheme.iosGray),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
                   ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTypeChip(LogType? type, String label, [Color? color]) {
+    final selected = _filterType == type;
+    return Padding(
+      padding: const EdgeInsets.only(right: 4),
+      child: GestureDetector(
+        onTap: () => setState(() => _filterType = type),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: selected
+                ? (color ?? AppTheme.iosBlue)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: selected
+                  ? (color ?? AppTheme.iosBlue)
+                  : AppTheme.iosGray4,
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: selected ? Colors.white : AppTheme.iosGray,
+            ),
+          ),
+        ),
       ),
     );
   }
