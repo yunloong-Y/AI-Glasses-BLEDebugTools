@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="aiglasses_bledebugtools"
+        android:label="BLE调试工具"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
