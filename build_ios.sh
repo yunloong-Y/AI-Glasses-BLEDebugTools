@@ -49,6 +49,24 @@ err()   { echo -e "${RED}[ERROR]${NC} $*" >&2; }
 command -v flutter >/dev/null 2>&1 || { err "未找到 flutter，请先安装 Flutter SDK"; exit 1; }
 command -v xcodebuild >/dev/null 2>&1 || { err "未找到 xcodebuild，请通过 App Store 安装 Xcode"; exit 1; }
 
+# ---------- 关闭代理（全局） ----------
+# 用户配了国内镜像 PUB_HOSTED_URL/FLUTTER_STORAGE_BASE_URL，但环境变量同时有 HTTPS_PROXY，
+# 导致 pub/CocoaPods 下载时先走代理绕到境外再回来，严重超时甚至卡死。
+# 全程关闭代理，直连国内镜像即可。（与 build_android.sh 保持一致）
+if [ -n "${http_proxy:-}${https_proxy:-}${HTTP_PROXY:-}${HTTPS_PROXY:-}" ]; then
+  warn "检测到代理环境变量，构建期间临时关闭（国内镜像不需要代理）"
+  export _SAVED_http_proxy="${http_proxy:-}" _SAVED_https_proxy="${https_proxy:-}"
+  export _SAVED_HTTP_PROXY="${HTTP_PROXY:-}" _SAVED_HTTPS_PROXY="${HTTPS_PROXY:-}"
+  unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY
+  # 脚本退出时自动恢复
+  trap '
+    [ -n "$_SAVED_http_proxy" ]  && export http_proxy="$_SAVED_http_proxy"   || unset http_proxy
+    [ -n "$_SAVED_https_proxy" ] && export https_proxy="$_SAVED_https_proxy" || unset https_proxy
+    [ -n "$_SAVED_HTTP_PROXY" ]  && export HTTP_PROXY="$_SAVED_HTTP_PROXY"   || unset HTTP_PROXY
+    [ -n "$_SAVED_HTTPS_PROXY" ] && export HTTPS_PROXY="$_SAVED_HTTPS_PROXY" || unset HTTPS_PROXY
+  ' EXIT
+fi
+
 # ---------- 版本号解析 ----------
 if ! grep -qE '^version:[[:space:]]*[0-9]+\.[0-9]+\.[0-9]+\+[0-9]+' pubspec.yaml; then
   err "pubspec.yaml 缺少合法的 version 字段（应为 1.0.0+1 格式）"
@@ -136,12 +154,23 @@ ok "签名团队: $TEAM"
 PBXPROJ="ios/Runner.xcodeproj/project.pbxproj"
 if [ -f "$PBXPROJ" ]; then
   info "写入 DEVELOPMENT_TEAM 到 project.pbxproj ..."
-  if [[ "$(uname)" == "Darwin" ]]; then
-    sed -i '' "s/DEVELOPMENT_TEAM = \".*\";/DEVELOPMENT_TEAM = \"$TEAM\";/g" "$PBXPROJ"
+  if grep -q 'DEVELOPMENT_TEAM' "$PBXPROJ"; then
+    # 已存在则原地替换
+    if [[ "$(uname)" == "Darwin" ]]; then
+      sed -i '' "s/DEVELOPMENT_TEAM = \".*\";/DEVELOPMENT_TEAM = \"$TEAM\";/g" "$PBXPROJ"
+    else
+      sed -i "s/DEVELOPMENT_TEAM = \".*\";/DEVELOPMENT_TEAM = \"$TEAM\";/g" "$PBXPROJ"
+    fi
   else
-    sed -i "s/DEVELOPMENT_TEAM = \".*\";/DEVELOPMENT_TEAM = \"$TEAM\";/g" "$PBXPROJ"
+    # 不存在则在每处 CODE_SIGN_STYLE 后插入（Debug/Release/Profile 三个配置）
+    info "pbxproj 中无 DEVELOPMENT_TEAM，自动插入到各构建配置 ..."
+    perl -pi -e "s/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Automatic;\\n\t\t\t\tDEVELOPMENT_TEAM = \"\Q$TEAM\E\";/g" "$PBXPROJ"
+    if ! grep -q 'DEVELOPMENT_TEAM' "$PBXPROJ"; then
+      err "自动插入 DEVELOPMENT_TEAM 失败，请手动在 Xcode 中配置签名团队"
+      exit 1
+    fi
   fi
-  ok "签名配置已写入"
+  ok "签名配置已写入 (DEVELOPMENT_TEAM=$TEAM)"
 else
   warn "未找到 $PBXPROJ，跳过签名写入（可能需手动在 Xcode 中配置）"
 fi
