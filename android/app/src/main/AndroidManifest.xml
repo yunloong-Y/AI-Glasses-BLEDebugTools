@@ -1,4 +1,31 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- ============================================================
+         Bluetooth 权限
+         注意：flutter_blue_plus 的 Android 插件故意把自带 AndroidManifest
+         留空，不代宿主声明任何蓝牙权限，必须由本文件声明，否则
+         Android 12+ 扫描无任何结果（startScan 静默失败）。
+         ============================================================ -->
+
+    <!-- Android 11 (API 30) 及以下：经典蓝牙 + 位置权限 -->
+    <uses-permission android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"
+        android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"
+        android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"
+        android:maxSdkVersion="30" />
+
+    <!-- Android 12 (API 31) 及以上：新运行时权限 -->
+    <!-- neverForLocation：声明本 App 不用 BLE 推导地理位置，
+         这样用户无需开启 GPS，也无需授予位置权限即可扫描 -->
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
+    <!-- 声明 BLE 硬件为必需，便于 Play 商店过滤（可选但推荐） -->
+    <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
+
     <application
         android:label="BLE调试工具"
         android:name="${applicationName}"

@@ -1,8 +1,8 @@
 # AI-Glasses-BLEDebugTools 代码记忆文档
 
 > 通读全部源码后形成的理解文档，用于跨会话快速回忆架构、数据流与已知坑点。
-> 最后更新：2026-08-22（全量通读核实，与 0393bb1 之后的未提交改动一致）
-> 代码规模：`lib/` 共 22 个 Dart 文件、约 6901 行。
+> 最后更新：2026-09-02（新增 SN 绑定模块：glass_protocol / sn_binding_service / sn_binding_coordinator / sn_binding_page，全部分析通过）
+> 代码规模：`lib/` 共 26 个 Dart 文件。
 
 ---
 
@@ -43,6 +43,9 @@ lib/
 │   └── bluetooth_impl.dart   # StandardBluetoothAdapter（flutter_blue_plus 实现）
 ├── core/
 │   ├── device_manager.dart   # 多设备连接池（单例）
+│   ├── glass_protocol.dart   # 眼镜 BLE 协议 v2.0.17（2026-09 移植自 BesAPP，见第 12 节）
+│   ├── sn_binding_service.dart    # SN 绑定后台客户端（admin.moonix.cn）
+│   ├── sn_binding_coordinator.dart# SN 绑定五阶段编排器
 │   ├── log_parser.dart       # LogParser（日志缓存/过滤）+ HciLogDecoder
 │   ├── protocol_parser.dart  # 协议解析引擎（839 行，最大文件）
 │   ├── protocol_registry.dart# ProtocolRegistry（协议注册中心，单例）
@@ -55,7 +58,8 @@ lib/
 │   └── wq_bluetooth_plugin.dart # 物奇微 WQ 插件 + WqAdapter
 └── ui/
     ├── theme.dart            # AppTheme（亮/暗 iOS 风）+ IosCard/IosEmptyState/IosSectionHeader（2026-08 新增，未提交）
-    ├── scan_page.dart        # ① 扫描
+    ├── scan_page.dart        # ① 扫描（已连接时顶栏有「SN 绑定」二维码图标入口）
+    ├── sn_binding_page.dart  # SN 绑定页（2026-09 新增，从扫描页 push）
     ├── gatt_view.dart        # ② GATT 服务树
     ├── log_console.dart      # ③ 实时日志
     ├── ota_page.dart         # ④ OTA 升级
@@ -205,7 +209,36 @@ lib/
 
 ---
 
-## 10. 典型数据流
+## 11. SN 绑定模块（2026-09-02，从 BesAPP 移植）
+
+> 来源：`BesAPP/Android` 的 `moonixglass/MoonixSnBinding*.java` + `bes-glass-sdk` 协议层。真机可用的完整链路。
+
+### 11.1 BLE 协议（`core/glass_protocol.dart`）
+- **外层帧**：`A5 | Length(2 LE) | Payload | CRC16-IBM(2 LE)`，CRC 覆盖 A5+Length+Payload。
+- **内层 Payload**：`CMD(2 LE) | Type(1) | Seq(1) | DataLen(2 LE) | Data`；Type=1 请求 / 2 响应 / 3 设备 Notify。
+- **UUID（2000 段，勿改 1000）**：Service `01000100-0000-2000-8000-009078563412`、Notify `02000200-...-009178563412`、Write `03000300-...-009278563412`。
+- `GlassFrameAssembler`：跨 BLE 包帧重组（BytesBuilder 缓冲、CRC 失败跳 1 字节重同步）。
+- `GlassCommandClient`：Type=1 请求 → 按 Seq 匹配 Type=2 响应，8s 默认超时；复用 `StandardBluetoothAdapter.writeChar/subscribeNotify`（flutter_blue_plus 链路，无原生桥）。
+- `GlassInfoApi`：0x0002 型号 / 0x0003 版本 / 0x0009 读 SN / 0x000E 写 SN / 0x0101 电量（返回 level+charging）/ 0x0008 连接侧。
+
+### 11.2 后台客户端（`core/sn_binding_service.dart`）
+- `https://admin.moonix.cn`，内置仓库账号 warehouse/warehouse123（登录后校验 `warehouse:view`+`warehouse:write` 权限）。
+- `POST /v1/admin/auth/login` → token；`GET/POST/DELETE /api/leg-device-sns/{sn}[/bind|/binding]`。
+- dart:io HttpClient，8s 超时；MAC 上报前归一化为 `AA:BB:CC:DD:EE:FF` 大写。
+- 响应校验：SN 一致、绑定状态 BOUND/UNBOUND、bind 后 MAC 一致、clear 后绑定字段全空。
+
+### 11.3 编排器（`core/sn_binding_coordinator.dart`）
+- 五阶段：`validateSn → readDeviceIdentity → backendBind → deviceWrite → deviceVerify`。
+- SN 规则：12 位 Base36 大写（`^[0-9A-Z]{12}$`）。
+- 失败恢复：`SnBindingException` 携带 stage + backendBound；后台成功但设备侧失败 → `retryDeviceWrite()` 只重跑 0x000E 写 + 0x0009 回读。
+
+### 11.4 UI（`ui/sn_binding_page.dart`）
+- 手动输入 SN（BesAPP 原版是 ZXing 摄像头扫码；调试工具场景改为键盘输入，避免相机依赖）。
+- 模式状态机：input / checking / boundInfo / binding / success / failure / clearing。
+- 流程日志写入全局 LogParser（`[SN]` 前缀，LogType.atCmd）。
+- 入口：扫描页顶栏已连接徽标旁的二维码图标（仅 connected 时显示）。
+
+---
 
 ```
 用户点「扫描」(ScanPage)
@@ -233,6 +266,6 @@ OTA 页
 
 ---
 
-## 11. 一句话总结
+## 12. 一句话总结
 
-这是一个**架构清晰、UI 完成度高，但底层 BLE 真机交互（OTA / 寄存器 / AT 响应回读）尚未真正打通**的 Flutter BLE 调试工具：Dart 侧全用 `flutter_blue_plus`，厂商差异化逻辑（Adapter 子类）多为 TODO/异常，原生桥接代码游离未集成。后续若要「真能调设备」，优先补齐 `StandardBluetoothAdapter` 的 AT 响应回读与各厂商 `Adapter.startOta/readRegister`。
+这是一个**架构清晰、UI 完成度高，但底层 BLE 真机交互（OTA / 寄存器 / AT 响应回读）尚未真正打通**的 Flutter BLE 调试工具：Dart 侧全用 `flutter_blue_plus`，厂商差异化逻辑（Adapter 子类）多为 TODO/异常，原生桥接代码游离未集成。**例外**：SN 绑定链路（glass_protocol + sn_binding_*，2026-09 移植）已是真机可用的完整闭环，可作为后续打通其他命令族的协议基座——`GlassCommandClient` 已经解决了「写入后等待真实响应」这个全项目最核心的缺口。后续若要「真能调设备」，优先在 SN 绑定的协议基座上补齐寄存器/AT 命令族与各厂商 OTA。
