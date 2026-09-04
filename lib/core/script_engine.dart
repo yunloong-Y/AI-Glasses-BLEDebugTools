@@ -32,6 +32,18 @@ class ScriptAction {
   factory ScriptAction.writeReg(int addr, List<int> data) =>
       ScriptAction(ScriptActionType.writeReg, {'addr': addr, 'data': data});
 
+  factory ScriptAction.readReg(int addr, [int len = 1]) =>
+      ScriptAction(ScriptActionType.readReg, {'addr': addr, 'len': len});
+
+  factory ScriptAction.ota(String file) =>
+      ScriptAction(ScriptActionType.ota, {'file': file});
+
+  factory ScriptAction.connect() =>
+      ScriptAction(ScriptActionType.connect, const {});
+
+  factory ScriptAction.disconnect() =>
+      ScriptAction(ScriptActionType.disconnect, const {});
+
   factory ScriptAction.log(String msg) =>
       ScriptAction(ScriptActionType.log, {'msg': msg});
 
@@ -75,59 +87,133 @@ class ScriptEngine {
       StreamController<double>.broadcast();
   Stream<double> get progress => _progressController.stream;
 
+  /// 累积本次运行的所有输出行，供 assertResult 做全量匹配（而非仅最后一行），
+  /// 这样「读寄存器」等动作覆盖 lastResult 后，早先的 AT 响应仍可被断言命中。
+  final StringBuffer _transcript = StringBuffer();
+
+  void _log(String line) {
+    _outputController.add(line);
+    _transcript.writeln(line);
+  }
+
+
   /// 执行脚本
+  ///
+  /// 返回 true 表示所有 assertResult 校验通过（无断言或全 PASS）。
   Future<bool> execute(
     TestScript script, {
     required Future<String> Function(String cmd) onSendAt,
     required Future Function(int addr, List<int> data) onWriteReg,
     required Future<List<int>> Function(int addr) onReadReg,
+    Future<void> Function()? onConnect,
+    Future<void> Function()? onDisconnect,
+    Future<String> Function(String filePath)? onOta,
   }) async {
     _running = true;
+    _transcript.clear();
     var stepIndex = 0;
     final totalSteps = script.steps.length;
+    var assertFailures = 0;
+    String lastResult = '';
 
     for (final step in script.steps) {
       if (!_running) break;
 
       final repeatCount = step.repeat ?? 1;
       for (var r = 0; r < repeatCount && _running; r++) {
-        _outputController.add('[Step ${stepIndex + 1}] ${step.name ?? 'unnamed'}'
+        _log('[Step ${stepIndex + 1}] ${step.name ?? 'unnamed'}'
             '${r > 0 ? " (repeat ${r + 1})" : ""}');
 
         for (final action in step.actions) {
           if (!_running) break;
 
+          try {
           switch (action.type) {
             case ScriptActionType.delay:
-              final ms = action.params['ms'] as int;
+              final ms = action.params['ms'] as int? ?? 0;
               await Future.delayed(Duration(milliseconds: ms));
+              break;
+
+            case ScriptActionType.connect:
+              if (onConnect != null) {
+                _log('>> CONNECT');
+                await onConnect();
+                _log('<< 已连接');
+              } else {
+                _log('[SKIP] connect 未绑定回调');
+              }
+              break;
+
+            case ScriptActionType.disconnect:
+              if (onDisconnect != null) {
+                _log('>> DISCONNECT');
+                await onDisconnect();
+                _log('<< 已断开');
+              } else {
+                _log('[SKIP] disconnect 未绑定回调');
+              }
               break;
 
             case ScriptActionType.sendAt:
               final cmd = action.params['cmd'] as String;
-              _outputController.add('>> AT: $cmd');
+              _log('>> AT: $cmd');
               final result = await onSendAt(cmd);
-              _outputController.add('<< $result');
+              lastResult = result;
+              _log('<< $result');
               break;
 
             case ScriptActionType.writeReg:
               final addr = action.params['addr'] as int;
-              final data = action.params['data'] as List<int>;
+              final data = (action.params['data'] as List?)?.cast<int>() ?? const [];
               await onWriteReg(addr, data);
-              _outputController.add(
+              _log(
                   '>> REG_WR: 0x${addr.toRadixString(16)} = $data');
               break;
 
+            case ScriptActionType.readReg:
+              final addr = action.params['addr'] as int;
+              final data = await onReadReg(addr);
+              final hex = data
+                  .map((b) => b.toRadixString(16).padLeft(2, '0'))
+                  .join(' ');
+              lastResult = hex;
+              _log(
+                  '>> REG_RD: 0x${addr.toRadixString(16)} = [$hex]');
+              break;
+
+            case ScriptActionType.ota:
+              final file = action.params['file'] as String? ?? '';
+              if (onOta != null) {
+                _log('>> OTA: $file');
+                final result = await onOta(file);
+                lastResult = result;
+                _log('<< $result');
+              } else {
+                _log('[SKIP] ota 未绑定回调');
+              }
+              break;
+
             case ScriptActionType.log:
-              _outputController.add('[LOG] ${action.params['msg']}');
+              _log('[LOG] ${action.params['msg']}');
               break;
 
             case ScriptActionType.assertResult:
-              // TODO: 校验上一条指令的返回值
+              final expected = (action.params['expected'] as String?) ?? '';
+              final pass = _transcript
+                  .toString()
+                  .toLowerCase()
+                  .contains(expected.toLowerCase());
+              if (pass) {
+                _log('[ASSERT] PASS — 含 "$expected"');
+              } else {
+                assertFailures++;
+                _log(
+                    '[ASSERT] FAIL — 期望含 "$expected"，实际: $lastResult');
+              }
               break;
-
-            default:
-              break;
+          }
+          } catch (e) {
+            _log('[ERROR] ${action.type.name}: $e');
           }
         }
       }
@@ -137,7 +223,7 @@ class ScriptEngine {
     }
 
     _running = false;
-    return true;
+    return assertFailures == 0;
   }
 
   void stop() {

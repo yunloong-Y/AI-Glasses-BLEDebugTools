@@ -68,15 +68,13 @@ class FrameFieldDef {
         (e) => e.name == json['encoding'],
         orElse: () => FieldEncoding.hex,
       ),
-      byteLength: json['byteLength'] as int? ?? 0,
+      byteLength: _parseIntOrNull(json['byteLength']) ?? 0,
       endian: json['endian'] != null
           ? Endianness.values.firstWhere((e) => e.name == json['endian'])
           : null,
       lengthSource: json['lengthSource'] as String?,
       description: json['description'] as String?,
-      enumMap: json['enumMap'] != null
-          ? Map<int, String>.from(json['enumMap'])
-          : null,
+      enumMap: _parseEnumMap(json['enumMap']),
     );
   }
 
@@ -236,7 +234,7 @@ class CommandDef {
   factory CommandDef.fromJson(Map<String, dynamic> json) {
     return CommandDef(
       name: json['name'] as String,
-      opCode: json['opCode'] as int,
+      opCode: _parseOpcode(json['opCode']),
       direction: json['direction'] as String? ?? 'bidirectional',
       description: json['description'] as String?,
       paramNames: json['paramNames'] != null
@@ -287,14 +285,12 @@ class RegisterDef {
 
   factory RegisterDef.fromJson(Map<String, dynamic> json) {
     return RegisterDef(
-      address: json['address'] as int,
+      address: _parseIntOrNull(json['address']) ?? 0,
       name: json['name'] as String,
-      size: json['size'] as int? ?? 4,
+      size: _parseIntOrNull(json['size']) ?? 4,
       access: json['access'] as String? ?? 'rw',
       description: json['description'] as String?,
-      bitFields: json['bitFields'] != null
-          ? Map<int, String>.from(json['bitFields'])
-          : null,
+      bitFields: _parseEnumMap(json['bitFields']),
     );
   }
 }
@@ -372,18 +368,7 @@ class ProtocolDef {
       frameFormats: (json['frameFormats'] as List)
           .map((f) => FrameFormatDef.fromJson(f as Map<String, dynamic>))
           .toList(),
-      commandGroups: (json['commandGroups'] as List).map((g) {
-        final gj = g as Map<String, dynamic>;
-        return CommandGroup(
-          name: gj['name'] as String,
-          description: gj['description'] as String?,
-          opCodeRangeStart: gj['opCodeRangeStart'] as int?,
-          opCodeRangeEnd: gj['opCodeRangeEnd'] as int?,
-          commands: (gj['commands'] as List)
-              .map((c) => CommandDef.fromJson(c as Map<String, dynamic>))
-              .toList(),
-        );
-      }).toList(),
+      commandGroups: _parseCommandGroups(json),
       registers: (json['registers'] as List? ?? [])
           .map((r) => RegisterDef.fromJson(r as Map<String, dynamic>))
           .toList(),
@@ -571,6 +556,76 @@ class ChecksumHelper {
         return 0;
     }
   }
+}
+
+/// 解析整型：兼容 int 与十六进制/十进制字符串（如 '0xA5' / '1' / '0x0001'）。
+/// 字段缺失或非数字时返回 null，交由调用处决定默认值。
+int? _parseIntOrNull(dynamic v) {
+  if (v == null) return null;
+  if (v is int) return v;
+  if (v is String) {
+    final s = v.trim();
+    if (s.isEmpty) return null;
+    if (s.startsWith('0x') || s.startsWith('0X')) {
+      return int.tryParse(s.substring(2), radix: 16);
+    }
+    return int.tryParse(s);
+  }
+  return null;
+}
+
+/// 解析操作码：兼容 int 与十六进制/十进制字符串，缺失时回退 -1。
+int _parseOpcode(dynamic v) => _parseIntOrNull(v) ?? -1;
+
+/// 解析枚举映射：键可能是 int 或十六进制/十进制字符串（JSON 中常写作 "1"）
+Map<int, String>? _parseEnumMap(dynamic m) {
+  if (m == null) return null;
+  final out = <int, String>{};
+  (m as Map).forEach((k, v) {
+    out[_parseIntOrNull(k) ?? -1] = v as String;
+  });
+  return out;
+}
+
+/// 解析命令分组，兼容两种 JSON 形状：
+///  - commandGroups: [{name, opCodeRangeStart, opCodeRangeEnd, commands:[...]}]  (BES/AR1/WQ)
+///  - commands:      [{groupName|moduleId|categoryId, commands:[{opCode(String), name, description}]}]  (Realtek/UNISOC/Actions/Nordic)
+List<CommandGroup> _parseCommandGroups(Map<String, dynamic> json) {
+  final groups = json['commandGroups'];
+  if (groups != null) {
+    return (groups as List).map((g) {
+      final gj = g as Map<String, dynamic>;
+      return CommandGroup(
+        name: gj['name'] as String,
+        description: gj['description'] as String?,
+        opCodeRangeStart: gj['opCodeRangeStart'] as int?,
+        opCodeRangeEnd: gj['opCodeRangeEnd'] as int?,
+        commands: (gj['commands'] as List)
+            .map((c) => CommandDef.fromJson(c as Map<String, dynamic>))
+            .toList(),
+      );
+    }).toList();
+  }
+
+  final cmds = json['commands'];
+  if (cmds != null) {
+    return (cmds as List).map((g) {
+      final gj = g as Map<String, dynamic>;
+      final name = (gj['groupName'] as String?) ??
+          (gj['name'] as String?) ??
+          'Ungrouped';
+      final inner = (gj['commands'] as List?) ?? [];
+      return CommandGroup(
+        name: name,
+        description: gj['description'] as String?,
+        commands: inner
+            .map((c) => CommandDef.fromJson(c as Map<String, dynamic>))
+            .toList(),
+      );
+    }).toList();
+  }
+
+  return [];
 }
 
 /// 协议解析引擎
