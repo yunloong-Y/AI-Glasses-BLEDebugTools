@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../adapter/base_bluetooth.dart';
 import '../main.dart';
+import 'sn_binding_page.dart';
 import 'theme.dart';
 
 /// ============================================================
@@ -35,10 +36,40 @@ class _ScanPageState extends State<ScanPage> {
     VendorId.unknown: Icons.help_outline_rounded,
   };
 
+  final TextEditingController _searchCtrl = TextEditingController();
+  String _query = '';
+
   @override
   void initState() {
     super.initState();
     _requestPermissions();
+    _searchCtrl.addListener(() {
+      if (mounted) setState(() => _query = _searchCtrl.text.trim());
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  /// 按名称 / MAC / 厂商 / 设备类型 / 服务 UUID 过滤扫描结果，并按信号强弱（RSSI 降序）排序
+  List<DeviceInfo> _filterDevices(List<DeviceInfo> devices, String q) {
+    final lower = q.toLowerCase();
+    final result = devices.where((d) {
+      if (q.isEmpty) return true;
+      if (d.name.toLowerCase().contains(lower)) return true;
+      if (d.mac.toLowerCase().contains(lower)) return true;
+      if (d.vendorId.name.toLowerCase().contains(lower)) return true;
+      if (d.deviceType.name.toLowerCase().contains(lower)) return true;
+      if (d.bleServices.any((s) => s.toLowerCase().contains(lower))) {
+        return true;
+      }
+      return false;
+    }).toList();
+    result.sort((a, b) => b.rssi.compareTo(a.rssi));
+    return result;
   }
 
   Future<void> _requestPermissions() async {
@@ -118,7 +149,9 @@ class _ScanPageState extends State<ScanPage> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(ok ? '已连接 ${device.name}' : '连接失败'),
+        content: Text(ok
+            ? '已连接 ${device.name}'
+            : '连接失败${bleState.lastConnectError != null ? ': ${bleState.lastConnectError}' : ''}'),
         backgroundColor: ok ? AppTheme.iosGreen : AppTheme.iosRed,
       ),
     );
@@ -128,6 +161,7 @@ class _ScanPageState extends State<ScanPage> {
   Widget build(BuildContext context) {
     final bleState = context.watch<BleState>();
     final devices = bleState.scanResults;
+    final filtered = _filterDevices(devices, _query);
     final scanning = bleState.scanning;
     final connectedMac = bleState.selectedDevice?.mac;
 
@@ -173,6 +207,16 @@ class _ScanPageState extends State<ScanPage> {
                     ],
                   ),
                 ),
+              if (bleState.connected)
+                IconButton(
+                  tooltip: 'SN 绑定',
+                  icon: const Icon(Icons.qr_code_rounded),
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const SnBindingPage()),
+                  ),
+                ),
               IconButton(
                 icon: Icon(scanning
                     ? Icons.stop_circle_rounded
@@ -181,6 +225,20 @@ class _ScanPageState extends State<ScanPage> {
               ),
             ],
           ),
+          // Search bar（仅在有设备时显示）
+          if (devices.isNotEmpty)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                child: CupertinoSearchTextField(
+                  controller: _searchCtrl,
+                  placeholder: '搜索 名称 / MAC / 厂商 / 服务 UUID',
+                  style: const TextStyle(fontSize: 15),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 10),
+                ),
+              ),
+            ),
           // Content
           if (devices.isEmpty)
             SliverFillRemaining(
@@ -198,11 +256,26 @@ class _ScanPageState extends State<ScanPage> {
                         ],
                       ),
                     )
-                  : IosEmptyState(
-                      icon: Icons.bluetooth_disabled_rounded,
-                      title: '暂无设备',
-                      subtitle: '点击下方按钮开始扫描 BLE 设备',
-                    ),
+                  : (bleState.scanError != null)
+                      ? IosEmptyState(
+                          icon: Icons.error_outline_rounded,
+                          title: '扫描失败',
+                          subtitle: bleState.scanError!,
+                        )
+                      : IosEmptyState(
+                          icon: Icons.bluetooth_disabled_rounded,
+                          title: '暂无设备',
+                          subtitle: '点击下方按钮开始扫描 BLE 设备',
+                        ),
+            )
+          else if (filtered.isEmpty)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: IosEmptyState(
+                icon: Icons.search_off_rounded,
+                title: '无匹配设备',
+                subtitle: '没有设备匹配「$_query」',
+              ),
             )
           else
             SliverPadding(
@@ -210,7 +283,7 @@ class _ScanPageState extends State<ScanPage> {
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (ctx, i) {
-                    final dev = devices[i];
+                    final dev = filtered[i];
                     final isConnected = dev.mac == connectedMac;
                     return _DeviceCard(
                       device: dev,
@@ -221,7 +294,7 @@ class _ScanPageState extends State<ScanPage> {
                       onTap: () => _onDeviceTap(dev),
                     );
                   },
-                  childCount: devices.length,
+                  childCount: filtered.length,
                 ),
               ),
             ),
