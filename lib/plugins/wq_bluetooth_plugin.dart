@@ -79,14 +79,23 @@ class WqBluetoothPlugin extends BaseChipPlugin {
 
 /// 物奇微专用适配器
 class WqAdapter extends StandardBluetoothAdapter {
+  /// 物奇微 OTA 通道（与 BES 同属 ffe0 段的私有数据服务，
+  /// 但 OTA 数据特征走 ffe2，日志/透传走 ffe1）
+  static const String wqServiceUuid = '0000ffe0-0000-1000-8000-00805f9b34fb';
+  static const String wqOtaChar = '0000ffe2-0000-1000-8000-00805f9b34fb';
+  static const String wqNotifyChar = '0000ffe1-0000-1000-8000-00805f9b34fb';
+
+  /// 复用通用传输骨架。
+  ///
+  /// 未实现的差异化能力：产线模式进入、烧录后校验与版本回读——
+  /// 需拿到物奇微私有升级协议文档后补，目前按裸分片传输执行，
+  /// 无 ACK 与 CRC，仅建议在已确认通道正确的情况下使用。
   @override
-  Future<OtaResult> startOta(String filePath,
-      {Function(double progress)? onProgress}) async {
-    // WQ OTA 流程:
-    // 1. 进入产线/OTA 模式
-    // 2. 512B 分片
-    // 3. 校验 + 烧录
-    // TODO: 实现完整 OTA 逻辑
-    throw UnimplementedError('WQ OTA pending implementation');
-  }
+  String get otaServiceUuid => wqServiceUuid;
+
+  @override
+  String get otaWriteCharUuid => wqOtaChar;
+
+  @override
+  String get otaNotifyCharUuid => wqNotifyChar;
 }

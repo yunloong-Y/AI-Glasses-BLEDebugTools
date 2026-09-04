@@ -89,16 +89,19 @@ class QccArAdapter extends StandardBluetoothAdapter {
   static const _otaWriteChar = '0000ff01-0000-1000-8000-00805f9b34fb';
   static const _otaNotifyChar = '0000ff02-0000-1000-8000-00805f9b34fb';
 
+  /// 直接复用通用传输骨架，仅覆盖通道 UUID。
+  ///
+  /// 未实现的差异化能力（相对 BES 的完整协议流程）：
+  ///   - 握手/分包协商/CRC 校验：QCC 走的是 GAIA 或厂商私有升级协议，
+  ///     与本项目已移植的眼镜 OTA 帧格式不同，需拿到高通 GAIA 文档后补。
+  ///   - 双通道并行：BLE 单链路下无法真正并行，需要厂商确认其通道模型。
+  ///   - 4096B 分片：超出 BLE 单包上限，基类会按 MTU 自动收敛。
   @override
-  Future<OtaResult> startOta(String filePath,
-      {Function(double progress)? onProgress}) async {
-    // AR1 大文件 OTA 核心流程:
-    // 1. 校验固件 MD5/SHA256
-    // 2. AT+OTA_BEGIN 进入升级模式
-    // 3. 4096B 分片 + 双通道并行下发
-    // 4. 每片 CRC 校验，失败重传
-    // 5. AT+OTA_END + 校验版本 + 重启
-    // TODO: 实现完整 OTA 逻辑
-    throw UnimplementedError('QCC AR OTA pending implementation');
-  }
+  String get otaServiceUuid => _otaServiceUuid;
+
+  @override
+  String get otaWriteCharUuid => _otaWriteChar;
+
+  @override
+  String get otaNotifyCharUuid => _otaNotifyChar;
 }
