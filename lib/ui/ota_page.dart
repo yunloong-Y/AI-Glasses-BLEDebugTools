@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../main.dart';
+import '../adapter/base_bluetooth.dart';
 import '../plugins/base_plugin.dart';
 import 'theme.dart';
 
@@ -30,7 +31,6 @@ class _OtaPageState extends State<OtaPage> {
   double _progress = 0;
   bool _uploading = false;
   bool _paused = false;
-  bool _dualChannel = false;
   int _chunkSize = 512;
   String _statusText = '';
 
@@ -88,12 +88,18 @@ class _OtaPageState extends State<OtaPage> {
     });
 
     try {
-      await adapter.sendAtCommand('AT+OTA_BEGIN');
-      _statusText = '正在传输固件...';
+      // AT+OTA_BEGIN 只是「进入升级模式」的触发指令，并非所有固件都实现。
+      // 改造前这里裸 await 且无保护，一旦设备不响应就会抛异常，
+      // 导致固件一个字节都发不出去。改为尽力而为：失败只记录，不阻断传输。
+      await _tryAtCommand(adapter, 'AT+OTA_BEGIN');
+
+      setState(() => _statusText = '正在传输固件...');
 
       final result = await adapter.startOta(
         _firmwarePath!,
+        chunkSize: _chunkSize,
         onProgress: (p) {
+          if (!mounted) return;
           setState(() {
             _progress = p;
             _statusText =
@@ -103,9 +109,10 @@ class _OtaPageState extends State<OtaPage> {
       );
 
       if (result.success) {
-        await adapter.sendAtCommand('AT+OTA_END');
+        await _tryAtCommand(adapter, 'AT+OTA_END');
       }
 
+      if (!mounted) return;
       setState(() {
         _statusText = result.message;
         _uploading = false;
@@ -116,11 +123,25 @@ class _OtaPageState extends State<OtaPage> {
         result.success ? AppTheme.iosGreen : AppTheme.iosRed,
       );
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _uploading = false;
         _statusText = '升级失败: $e';
       });
       _showSnack('OTA 失败: $e', AppTheme.iosRed);
+    }
+  }
+
+  /// 尽力而为地发一条 AT 指令：失败只记录日志，不阻断主流程
+  ///
+  /// 用于 OTA_BEGIN / OTA_END 这类「有最好、没有也能跑」的触发指令。
+  Future<void> _tryAtCommand(
+      BaseBluetoothAdapter adapter, String command) async {
+    try {
+      await adapter.sendAtCommand(command);
+    } catch (e) {
+      // 设备未实现该指令属正常情况，不该让整次升级失败
+      debugPrint('$command 未生效（忽略）: $e');
     }
   }
 
@@ -130,16 +151,22 @@ class _OtaPageState extends State<OtaPage> {
 
     if (!_paused) {
       await adapter.pauseOta();
+      if (!mounted) return;
       setState(() {
         _paused = true;
-        _statusText = '已暂停';
+        _uploading = false;
+        _statusText = '已暂停（断点 ${_formatBytes(adapter.otaTransferredBytes)}，'
+            '点击继续从断点续传）';
       });
     } else {
+      // 续传必须重启传输循环：协议层的断点已经记录在 adapter 内，
+      // 这里重新调用 _startOta 会自动从断点接着发。
       await adapter.resumeOta();
+      if (!mounted) return;
       setState(() {
         _paused = false;
-        _statusText = '已恢复';
       });
+      await _startOta();
     }
   }
 
@@ -307,17 +334,15 @@ class _OtaPageState extends State<OtaPage> {
                           title: const Text('双通道并行传输'),
                           subtitle: Text(
                             plugin != null && plugin.otaSupportDualChannel
-                                ? '此设备支持双通道'
+                                ? '设备声明支持，但传输层尚未实现（BLE 单链路无法真并行）'
                                 : '此设备不支持双通道',
                             style: TextStyle(
                                 fontSize: 13, color: AppTheme.iosGray),
                           ),
-                          value: _dualChannel &&
-                              (plugin?.otaSupportDualChannel ?? false),
-                          onChanged:
-                              (plugin?.otaSupportDualChannel ?? false)
-                                  ? (v) => setState(() => _dualChannel = v)
-                                  : null,
+                          // 传输层未实现，开关保持关闭且不可操作，
+                          // 避免出现「打开了但没生效」的假象。
+                          value: false,
+                          onChanged: null,
                         ),
                         if (plugin != null)
                           Divider(
