@@ -7,6 +7,9 @@ import 'package:share_plus/share_plus.dart';
 import '../adapter/base_bluetooth.dart';
 import '../core/file_export.dart';
 import '../core/log_parser.dart';
+import '../core/protocol_parser.dart';
+import '../core/protocol_registry.dart';
+import '../core/gaia_protocol.dart';
 import '../main.dart';
 import 'theme.dart';
 
@@ -29,6 +32,9 @@ class _LogConsoleState extends State<LogConsole> {
   StreamSubscription? _logSub;
   final List<LogItem> _logs = [];
 
+  /// 报文解码缓存：key 为日志条目（每次新建唯一对象），value 为解码后的可读文本
+  final Map<LogItem, String?> _decoded = {};
+
   final _logTypeLabels = {
     LogType.hci: ('HCI', AppTheme.iosBlue),
     LogType.vendorLog: ('VENDOR', AppTheme.iosPurple),
@@ -44,6 +50,10 @@ class _LogConsoleState extends State<LogConsole> {
     final logParser = context.read<LogParser>();
     _logSub = logParser.logStream.listen((item) {
       if (!mounted) return;
+      // 一次性尝试用已加载的厂商协议帧格式解码，缓存结果
+      if (item.rawHex.isNotEmpty) {
+        _decoded[item] = _tryDecode(item);
+      }
       setState(() {
         _logs.add(item);
         if (_logs.length > 5000) {
@@ -78,10 +88,10 @@ class _LogConsoleState extends State<LogConsole> {
     return _logs.where((log) {
       if (_filterType != null && log.type != _filterType) return false;
       if (_filterKeyword.isNotEmpty) {
-        return log.decodeText
-                .toLowerCase()
-                .contains(_filterKeyword.toLowerCase()) ||
-            log.rawHex.toLowerCase().contains(_filterKeyword.toLowerCase());
+        final kw = _filterKeyword.toLowerCase();
+        return log.decodeText.toLowerCase().contains(kw) ||
+            log.rawHex.toLowerCase().contains(kw) ||
+            (_decoded[log]?.toLowerCase().contains(kw) ?? false);
       }
       return true;
     }).toList();
@@ -158,7 +168,10 @@ class _LogConsoleState extends State<LogConsole> {
                       icon: const Icon(Icons.delete_outline_rounded),
                       onPressed: () {
                         context.read<LogParser>().clear();
-                        setState(() => _logs.clear());
+                        setState(() {
+                          _logs.clear();
+                          _decoded.clear();
+                        });
                       },
                       tooltip: '清空',
                     ),
@@ -301,6 +314,27 @@ class _LogConsoleState extends State<LogConsole> {
                                           fontSize: 10,
                                           color: AppTheme.iosGray),
                                     ),
+                                    // 厂商协议解码结果（自动尝试，匹配不上不显示）
+                                    if (_decoded[log] != null) ...[
+                                      const SizedBox(height: 3),
+                                      Container(
+                                        width: double.infinity,
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 6, vertical: 3),
+                                        decoration: BoxDecoration(
+                                          color:
+                                              AppTheme.iosPurple.withOpacity(0.10),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          _decoded[log]!,
+                                          style: const TextStyle(
+                                              fontFamily: 'monospace',
+                                              fontSize: 11,
+                                              color: AppTheme.iosPurple),
+                                        ),
+                                      ),
+                                    ],
                                   ],
                                 ),
                               ),
@@ -346,6 +380,36 @@ class _LogConsoleState extends State<LogConsole> {
         ),
       ),
     );
+  }
+
+  /// 尝试用已加载的厂商协议帧格式解码一段原始 hex 日志。
+  /// 解码成功返回可读文本，匹配不上（AT 文本指令、无魔术字等）返回 null。
+  String? _tryDecode(LogItem item) {
+    if (item.rawHex.isEmpty) return null;
+    try {
+      final bytes = ProtocolParser.hexToBytes(item.rawHex);
+      if (bytes.isEmpty) return null;
+      final frame = ProtocolParser.parseAuto(
+          bytes, ProtocolRegistry().getAllFrameFormats());
+      if (frame != null) {
+        final buf = StringBuffer();
+        buf.write('[${frame.formatName}]');
+        if (!frame.checksumValid) buf.write(' ⚠️校验失败');
+        for (final f in frame.fields) {
+          buf.write(' ${f.name}=${f.displayValue}');
+          if (f.enumLabel != null) buf.write('(${f.enumLabel})');
+        }
+        if (frame.error != null) buf.write(' · ${frame.error}');
+        return buf.toString().trim();
+      }
+      // 通用帧格式未命中 → 尝试 Qualcomm GAIA 逆向协议解码
+      // （MOONDROP Space Travel 等 TWS 设备，来源 SpaceTravel-Protocol）
+      final gaia = GaiaDecoder.tryDecode(bytes);
+      if (gaia != null) return gaia.format();
+      return null;
+    } catch (_) {
+      return null;
+    }
   }
 
   String _formatTime(DateTime dt) {

@@ -3,7 +3,6 @@
 /// 协议注册中心：管理所有已加载的协议定义，支持热加载、卸载、查询。
 /// 内置三种厂商协议的快速匹配逻辑。
 
-import 'dart:convert';
 import 'dart:typed_data';
 import 'protocol_parser.dart';
 
@@ -11,7 +10,11 @@ import 'protocol_parser.dart';
 class ProtocolRegistry {
   static final ProtocolRegistry _instance = ProtocolRegistry._();
   factory ProtocolRegistry() => _instance;
-  ProtocolRegistry._();
+  ProtocolRegistry._() {
+    // 注册 GAIA 逆向协议桩（实际字节解码由 gaia_protocol.dart 负责，
+    // 这里仅为让 matchProtocol 返回的 'gaia' 可被协议列表/扫描识别）
+    register(_gaiaStub);
+  }
 
   final Map<String, ProtocolDef> _protocols = {};
 
@@ -79,6 +82,12 @@ class ProtocolRegistry {
           u.toUpperCase().contains('0000FF00'))) {
         return 'ar1_v1';
       }
+
+      // GAIA (Qualcomm) — MOONDROP Space Travel 等 TWS
+      // GAIA 服务 UUID 基址 0x1100–0x1103 (d102-11e1-9b23-00025b00a5a5)
+      if (allUuids.any((u) => u.toUpperCase().contains('0000110'))) {
+        return 'gaia';
+      }
     }
 
     // 策略 3: 设备名称关键词匹配
@@ -87,6 +96,11 @@ class ProtocolRegistry {
       if (name.contains('BES') || name.contains('MOONIX')) return 'bes_v2';
       if (name.contains('WQ') || name.contains('WUQI')) return 'wq_v1';
       if (name.contains('AR') || name.contains('SNAPDRAGON') || name.contains('QCC')) return 'ar1_v1';
+      if (name.contains('MOONDROP') ||
+          name.contains('SPACE TRAVEL') ||
+          name.contains('SPACE-TRAVEL')) {
+        return 'gaia';
+      }
     }
 
     return null;
@@ -129,3 +143,23 @@ class ProtocolRegistry {
     return true;
   }
 }
+
+/// GAIA 逆向协议桩定义（帧解码在 gaia_protocol.dart，不套用通用 FrameFormat）
+final ProtocolDef _gaiaStub = ProtocolDef(
+  id: 'gaia',
+  name: 'Qualcomm GAIA (MOONDROP Space Travel 逆向)',
+  vendor: VendorInfo(
+    vendorName: 'Qualcomm',
+    chipSeries: 'GAIA V3 (逆向)',
+    protocolVersion: 'V3',
+    website: 'https://www.qualcomm.com/',
+    description: '水月雨 MOONDROP Space Travel TWS 耳机蓝牙协议逆向分析'
+        '（RFCOMM/BLE GAIA）。来源: github.com/pubglite55/SpaceTravel-Protocol',
+  ),
+  services: const [],
+  frameFormats: const [],
+  commandGroups: const [],
+  registers: const [],
+  atCommands: const [],
+  notes: 'GAIA 帧由 lib/core/gaia_protocol.dart 的 GaiaDecoder 负责逆向解码。',
+);
