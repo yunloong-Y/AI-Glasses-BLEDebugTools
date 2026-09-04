@@ -192,14 +192,21 @@ abstract class BaseBluetoothAdapter {
   Future<void> unsubscribeNotify(String serviceUuid, String charUuid);
 
   /// 启动 OTA 升级
+  ///
+  /// [chunkSize] 为请求的分片大小；设备可能通过协商返回一个更小的值，
+  /// 实际生效值以日志/进度回调为准。传 null 时由适配器自行决定（通常 512）。
   Future<OtaResult> startOta(String filePath,
-      {Function(double progress)? onProgress});
+      {Function(double progress)? onProgress, int? chunkSize});
 
   /// 暂停 OTA
   Future<void> pauseOta();
 
   /// 恢复 OTA
   Future<void> resumeOta();
+
+  /// 当前 OTA 已传输字节数（用于断点续传展示）
+  int get otaTransferredBytes;
+  set otaTransferredBytes(int value);
 
   /// 获取设备日志流
   Stream<LogItem> getDeviceLogStream();
@@ -219,6 +226,12 @@ abstract class BaseBluetoothAdapter {
   /// 获取当前连接状态
   bool get isConnected;
 
+  /// 连接状态变化流（true=已连，false=已断）
+  Stream<bool> get connectionStateStream;
+
   /// 获取设备信息
   DeviceInfo? get deviceInfo;
+
+  /// 最近一次连接失败的原因（成功为 null）
+  String? get lastConnectError;
 }

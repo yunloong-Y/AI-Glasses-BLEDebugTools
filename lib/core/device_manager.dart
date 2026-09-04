@@ -16,11 +16,17 @@ class DeviceManager {
   /// 已连接设备池 (mac -> adapter)
   final Map<String, BaseBluetoothAdapter> _connected = {};
 
+  /// 最近一次连接失败的原因（按 mac 记录，成功为 null）
+  final Map<String, String> _connectErrors = {};
+
   /// 最大并发连接数
   static const int maxConnections = 8;
 
   /// 当前连接数
   int get connectionCount => _connected.length;
+
+  /// 读取指定设备最近一次连接失败原因
+  String? lastConnectError(String mac) => _connectErrors[mac];
 
   /// 获取所有已连接设备 MAC
   List<String> get connectedMacs => _connected.keys.toList();
@@ -41,6 +47,9 @@ class DeviceManager {
     final ok = await adapter.connect(device.mac);
     if (ok) {
       _connected[device.mac] = adapter;
+      _connectErrors.remove(device.mac);
+    } else {
+      _connectErrors[device.mac] = adapter.lastConnectError ?? '未知原因';
     }
     return ok;
   }

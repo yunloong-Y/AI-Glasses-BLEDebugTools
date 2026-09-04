@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart' as fbp;
+import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
 import 'adapter/base_bluetooth.dart';
@@ -20,6 +23,7 @@ import 'ui/ota_page.dart';
 import 'ui/register_debug.dart';
 import 'ui/plugin_manager.dart';
 import 'ui/audio_debug.dart';
+import 'ui/automation_page.dart';
 import 'ui/theme.dart';
 
 void main() async {
@@ -41,6 +45,10 @@ Future<void> _loadBuiltinProtocols() async {
     'assets/protocols/bes_v2.json',
     'assets/protocols/ar1_v1.json',
     'assets/protocols/wq_v1.json',
+    'assets/protocols/unisoc_w517.json',
+    'assets/protocols/realtek_rtl8763e.json',
+    'assets/protocols/actions_ats3089.json',
+    'assets/protocols/nordic_nrf54.json',
   ];
 
   for (final path in protocols) {
@@ -124,6 +132,10 @@ class BleState extends ChangeNotifier {
   bool _connected = false;
   bool get connected => _connected;
 
+  /// 最近一次连接失败原因（供 UI 提示）
+  String? get lastConnectError =>
+      _selectedDevice != null ? _deviceManager.lastConnectError(_selectedDevice!.mac) : null;
+
   /// 当前连接的适配器
   BaseBluetoothAdapter? _adapter;
   BaseBluetoothAdapter? get adapter => _adapter;
@@ -135,68 +147,136 @@ class BleState extends ChangeNotifier {
   /// adapter 日志桥接 subscription
   StreamSubscription? _logSub;
 
-  /// 开始扫描
-  Future<void> startScan({Duration timeout = const Duration(seconds: 10)}) async {
-    if (_scanning) return;
-    _scanning = true;
-    _scanResults.clear();
+  /// adapter 连接状态桥接 subscription（用于感知底层断连）
+  StreamSubscription? _connStateSub;
+
+  /// 扫描期间使用的 adapter（用于 stopScan 精确停止）
+  StandardBluetoothAdapter? _scanAdapter;
+
+  /// 最近一次扫描的错误原因（供 UI 展示，成功时为 null）
+  String? _scanError;
+  String? get scanError => _scanError;
+
+  /// 上次刷新 UI 的时间（扫描结果高频回调时节流用）
+  DateTime _lastNotify = DateTime.fromMillisecondsSinceEpoch(0);
+
+  /// 节流刷新：continuousUpdates 下每收到一批广播包就会回调，
+  /// 不做节流会每帧重建整个设备列表导致卡顿。
+  /// 扫描结束时另有一次无条件 notifyListeners，保证最终状态一定被渲染。
+  void _notifyThrottled() {
+    final now = DateTime.now();
+    if (now.difference(_lastNotify) < const Duration(milliseconds: 200)) return;
+    _lastNotify = now;
     notifyListeners();
+  }
 
-    _logParser.addLog(LogItem(
-      timestamp: DateTime.now(),
-      deviceMac: '',
-      type: LogType.system,
-      dir: LogDirection.send,
-      rawHex: '',
-      decodeText: '开始扫描 BLE 设备...',
-    ));
-
-    final stdAdapter = StandardBluetoothAdapter();
-    try {
-      final stream = stdAdapter.scanDevicesStream(timeout: timeout);
-      await for (final device in stream) {
-        // 去重
-        final idx = _scanResults.indexWhere((d) => d.mac == device.mac);
-        if (idx >= 0) {
-          _scanResults[idx] = device;
-        } else {
-          _scanResults.add(device);
-        }
-        notifyListeners();
-      }
-    } catch (e) {
-      _logParser.addLog(LogItem(
-        timestamp: DateTime.now(),
-        deviceMac: '',
-        type: LogType.system,
-        dir: LogDirection.recv,
-        rawHex: '',
-        decodeText: '扫描出错: $e',
-      ));
-    } finally {
-      await stdAdapter.stopScan();
-    }
-
-    _scanning = false;
-    notifyListeners();
-
+  void _addSystemLog(String text) {
     _logParser.addLog(LogItem(
       timestamp: DateTime.now(),
       deviceMac: '',
       type: LogType.system,
       dir: LogDirection.recv,
       rawHex: '',
-      decodeText: '扫描完成，发现 ${_scanResults.length} 个设备',
+      decodeText: text,
     ));
+  }
+
+  /// 扫描前置检查：硬件支持 → 蓝牙已开启 → 运行时权限
+  /// 返回 null 表示可以扫描，否则返回给用户的失败原因
+  Future<String?> _checkScanPrerequisites() async {
+    // 1. 硬件是否支持 BLE
+    if (!await fbp.FlutterBluePlus.isSupported) {
+      return '当前设备不支持蓝牙低功耗 (BLE)';
+    }
+
+    // 2. 蓝牙是否开启（首次调用时 adapterStateNow 可能为 unknown，需拉一次流）
+    var state = fbp.FlutterBluePlus.adapterStateNow;
+    if (state == fbp.BluetoothAdapterState.unknown) {
+      state = await fbp.FlutterBluePlus.adapterState.first;
+    }
+    if (state != fbp.BluetoothAdapterState.on) {
+      return '蓝牙未开启（当前状态：${state.name}）';
+    }
+
+    // 3. Android 运行时权限
+    if (Platform.isAndroid) {
+      final statuses = await [
+        Permission.bluetoothScan,
+        Permission.bluetoothConnect,
+      ].request();
+
+      // Android 11 及以下没有 BLUETOOTH_SCAN/CONNECT，退化为位置权限
+      final locStatus = await Permission.locationWhenInUse.status;
+
+      final scanOk =
+          statuses[Permission.bluetoothScan]!.isGranted || locStatus.isGranted;
+      final connOk =
+          statuses[Permission.bluetoothConnect]!.isGranted || locStatus.isGranted;
+
+      if (!scanOk || !connOk) {
+        return '蓝牙权限未授予（扫描=${scanOk ? '已授权' : '被拒绝'}，'
+            '连接=${connOk ? '已授权' : '被拒绝'}），请在系统设置中允许后重试';
+      }
+    }
+
+    return null;
+  }
+
+  /// 开始扫描
+  Future<void> startScan({Duration timeout = const Duration(seconds: 10)}) async {
+    if (_scanning) return;
+
+    _scanError = null;
+    _scanning = true;
+    _scanResults.clear();
+    notifyListeners();
+
+    _addSystemLog('开始扫描 BLE 设备...');
+
+    // 前置检查：不通过时直接告诉用户原因，而不是转圈 10 秒后给个空列表
+    final blocked = await _checkScanPrerequisites();
+    if (blocked != null) {
+      _scanning = false;
+      _scanError = blocked;
+      notifyListeners();
+      _addSystemLog('扫描中止：$blocked');
+      return;
+    }
+
+    final stdAdapter = StandardBluetoothAdapter();
+    _scanAdapter = stdAdapter;
+    try {
+      final stream = stdAdapter.scanDevicesStream(timeout: timeout);
+      await for (final device in stream) {
+        // 按 mac 去重并刷新 RSSI
+        final idx = _scanResults.indexWhere((d) => d.mac == device.mac);
+        if (idx >= 0) {
+          _scanResults[idx] = device;
+        } else {
+          _scanResults.add(device);
+        }
+        _notifyThrottled();
+      }
+    } catch (e) {
+      _scanError = '扫描出错：$e';
+      _addSystemLog('扫描出错: $e');
+    } finally {
+      await stdAdapter.stopScan();
+      _scanAdapter = null;
+    }
+
+    _scanning = false;
+    notifyListeners();
+
+    _addSystemLog('扫描完成，发现 ${_scanResults.length} 个设备');
   }
 
   /// 停止扫描
   Future<void> stopScan() async {
-    await _deviceManager.broadcastCommand((adapter) async {
-      if (adapter is StandardBluetoothAdapter) {
-        await adapter.stopScan();
-      }
-    });
+    // 注意：不要走 DeviceManager.broadcastCommand —— 扫描用的 adapter
+    // 并未注册进 DeviceManager 的连接池，遍历它永远拿不到，stopScan 会静默失效。
+    await _scanAdapter?.stopScan();
+    _scanAdapter = null;
     _scanning = false;
     notifyListeners();
   }
@@ -227,6 +307,13 @@ class BleState extends ChangeNotifier {
         _logParser.addLog(item);
       });
 
+      // 桥接底层连接状态：设备掉线时把 _connected 真实地回写为 false，
+      // 否则 UI 会一直显示「已连接」但所有操作静默失败。
+      _connStateSub?.cancel();
+      _connStateSub = _adapter!.connectionStateStream.listen((isConn) {
+        if (!isConn && _connected) _onAdapterDisconnected(device.mac);
+      });
+
       // 自动发现 GATT 服务
       try {
         _services.clear();
@@ -251,13 +338,14 @@ class BleState extends ChangeNotifier {
         decodeText: '已连接 ${device.name}，发现 ${_services.length} 个服务',
       ));
     } else {
+      final err = _deviceManager.lastConnectError(device.mac);
       _logParser.addLog(LogItem(
         timestamp: DateTime.now(),
         deviceMac: device.mac,
         type: LogType.system,
         dir: LogDirection.recv,
         rawHex: '',
-        decodeText: '连接失败',
+        decodeText: '连接失败${err != null ? ': $err' : ''}',
       ));
     }
 
@@ -265,10 +353,25 @@ class BleState extends ChangeNotifier {
     return ok;
   }
 
+  /// 底层 BLE 断连回调：把连接状态真实地回写为未连接
+  void _onAdapterDisconnected(String mac) {
+    _connected = false;
+    _adapter = null;
+    _services.clear();
+    _connStateSub?.cancel();
+    _connStateSub = null;
+    _logSub?.cancel();
+    _logSub = null;
+    notifyListeners();
+    _addSystemLog('设备已断开: $mac');
+  }
+
   /// 断开当前设备
   Future<void> disconnect() async {
     if (_selectedDevice == null) return;
 
+    _connStateSub?.cancel();
+    _connStateSub = null;
     await _deviceManager.disconnectDevice(_selectedDevice!.mac);
     _logSub?.cancel();
     _connected = false;
@@ -312,6 +415,7 @@ class _MainPageState extends State<MainPage> {
     RegisterDebugPage(),
     AudioDebugPage(),
     PluginManagerPage(),
+    AutomationPage(),
   ];
 
   final labels = [
@@ -322,6 +426,7 @@ class _MainPageState extends State<MainPage> {
     '寄存器',
     '音频',
     '插件',
+    '自动化',
   ];
 
   final icons = [
@@ -332,6 +437,7 @@ class _MainPageState extends State<MainPage> {
     Icons.memory_rounded,
     Icons.graphic_eq_rounded,
     Icons.extension_rounded,
+    Icons.playlist_play_rounded,
   ];
 
   @override
@@ -345,7 +451,6 @@ class _MainPageState extends State<MainPage> {
   @override
   Widget build(BuildContext context) {
     final bleState = context.watch<BleState>();
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       body: IndexedStack(
